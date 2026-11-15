@@ -236,6 +236,121 @@ body::before {
 }
 
 /* ========================================================
+   HEADER SESI BELANJA (LOKASI & TANGGAL TRANSAKSI)
+   ======================================================== */
+.shopping-session-card {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-left: 4px solid var(--primary);
+}
+
+.session-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.session-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.session-badge {
+  background: var(--primary-light);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-controls-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 8px;
+}
+
+.session-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.session-field label {
+  font-size: 0.67rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.session-select,
+.session-date-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  width: 100%;
+  transition: all var(--transition-fast);
+}
+
+.session-select {
+  padding-right: 24px;
+  text-overflow: ellipsis;
+}
+
+.session-select:focus,
+.session-date-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.badge-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+
+.store-chip.highlight {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+  font-weight: 700;
+}
+
+/* ========================================================
    F-05: SAFETY CAP & BUDGET TRACKER CARD
    ======================================================== */
 .safety-cap-card {
@@ -455,10 +570,27 @@ body::before {
 }
 
 .safety-status-alert.danger {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(220, 38, 38, 0.22);
+  border: 2px solid #ef4444;
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.45);
+  animation: alert-shake 0.5s ease-in-out, danger-glow 1.5s infinite alternate;
+}
+
+.safety-status-alert.danger strong {
   color: #fca5a5;
-  animation: alert-shake 0.5s ease-in-out;
+  font-size: 0.88rem;
+}
+
+.safety-status-alert.danger p {
+  color: #ffffff;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+@keyframes danger-glow {
+  from { box-shadow: 0 0 8px rgba(239, 68, 68, 0.35); }
+  to { box-shadow: 0 0 20px rgba(239, 68, 68, 0.7); }
 }
 
 .safety-status-alert.danger .status-icon {
@@ -935,24 +1067,89 @@ body::before {
   color: #7dd3fc;
 }
 
-/* Card Bottom Subtotal Row */
+/* Card Bottom Subtotal Row & Stepper (Criterion 1) */
 .card-row-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 10px;
+  gap: 10px;
+}
+
+/* Stepper Kuantitas Langsung di Kartu (Minimal 44x44px Touch Target) */
+.card-qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 3px 6px 3px 3px;
+}
+
+.btn-card-qty {
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.btn-card-qty:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+  transform: scale(1.05);
+}
+
+.btn-card-qty:active {
+  transform: scale(0.92);
+  background: var(--primary-hover);
+}
+
+.card-qty-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+  min-width: 32px;
+  text-align: center;
+}
+
+.card-qty-unit {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  padding-left: 2px;
+}
+
+.card-subtotal-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 .subtotal-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--text-dim);
   font-weight: 600;
   text-transform: uppercase;
 }
 
 .subtotal-amount {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 800;
   color: #ffffff;
 }
@@ -1844,5 +2041,86 @@ select:focus {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
+}
+
+/* ========================================================
+   CRITERION 4: RESPONSIVE OPTIMIZATION (375px No Scrollbar)
+   ======================================================== */
+@media (max-width: 390px) {
+  .app-container {
+    padding: 8px 10px;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .session-controls-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .budget-metrics-grid {
+    grid-template-columns: 1.1fr 1.1fr 0.8fr;
+    gap: 6px;
+    padding: 8px 6px;
+  }
+
+  .metric-label {
+    font-size: 0.62rem;
+  }
+
+  .metric-val {
+    font-size: 0.82rem;
+  }
+
+  .quick-stats-row {
+    gap: 8px;
+  }
+
+  .stat-pill {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .pill-title {
+    font-size: 0.62rem;
+  }
+
+  .pill-number {
+    font-size: 0.84rem;
+  }
+
+  .card-row-bottom {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .card-qty-stepper {
+    width: 100%;
+    justify-content: space-between;
+    box-sizing: border-box;
+  }
+
+  .btn-card-qty {
+    flex: 1;
+    max-width: 54px;
+  }
+
+  .card-subtotal-info {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+    padding-top: 6px;
+  }
+
+  .modal-sheet {
+    max-height: 94vh;
+  }
+
+  .modal-form, .quick-calc-body, .history-modal-body, .settings-modal-body {
+    padding: 14px 14px 20px 14px;
+  }
 }
 

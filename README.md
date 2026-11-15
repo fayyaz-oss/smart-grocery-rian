@@ -8,6 +8,11 @@ Aplikasi terhubung langsung ke **Cloud Firestore secara Realtime** dengan fallba
 
 ## 🌟 Fitur Utama
 
+### 0. Header Sesi Belanja & Metadata Lokasi/Tanggal (Studi Kasus Rian)
+- **Selector Lokasi Supermarket di Header**: Pilihan default `"Lotte Mart Grocery - Puri Indah"` serta opsi supermarket lain (Superindo, Indomaret, Alfamart, Pasar Modern, Hypermart, Transmart).
+- **Selector Tanggal Transaksi di Header**: Input tanggal (`<input type="date">`, default hari ini) agar seluruh barang dalam satu sesi belanja otomatis terasosiasi dengan lokasi dan tanggalnya.
+- **Quick Chip Lotte Mart**: Tombol cepat di modal input barang belanjaan untuk memilih Lotte Mart Puri Indah dalam 1 klik.
+
 ### 1. Daftar Belanja & Subtotal Otomatis (F-01 & F-02)
 - Input lengkap: **Nama barang**, **Lokasi Toko** (dilengkapi quick chips: Superindo, Indomaret, Alfamart, Pasar Modern), **Kategori**, **Kuantitas & Satuan** (pcs, kg, liter, pack, botol, dll.), dan **Harga Satuan Normal**.
 - Perhitungan **Subtotal Otomatis** untuk setiap item berdasarkan kuantitas & harga efektif setelah diskon.
@@ -26,17 +31,15 @@ Aplikasi terhubung langsung ke **Cloud Firestore secara Realtime** dengan fallba
 - **Fitur Khusus: Kalkulator Diskon Cepat (Standalone Modal)**:
   - Tombol persentase (`%`) di header memungkinkan Anda mengecek diskon barang di lorong toko secara instan tanpa harus menambahkannya ke daftar belanja.
 
-### 3. Komparator Harga Riwayat Toko (F-04)
-- Secara otomatis mencatat riwayat harga setiap barang di berbagai toko ke dalam database.
-- Saat Anda mengetik barang dan harga di toko tertentu:
-  - Sistem langsung mengecek riwayat harga sebelumnya dari toko lain.
-  - Memberikan indikator komparasi:
-    - 🔻 **Panah Hijau**: Harga lebih murah/turun dibanding toko sebelumnya.
-    - 🔺 **Panah Merah**: Harga lebih mahal/naik dibanding toko sebelumnya.
-    - ⏺️ **Garis Abu-abu**: Harga stabil / sama dengan toko sebelumnya.
-    - 🆕 **Toko Pertama**: Data pertama untuk barang ini.
+### 3. Komparator Harga Riwayat Toko & Tanggal Sebelumnya (F-04)
+- Secara otomatis mencatat riwayat harga setiap barang berdasarkan **Lokasi Toko yang sama** dan **Tanggal Transaksi Sebelumnya**.
+- Saat barang diinput atau dilihat di daftar belanja, sistem mencocokkan riwayat dan menampilkan indikator visual:
+  - 🔺 **Panah Merah Naik (↑)**: Menunjukkan harga naik dibanding tanggal transaksi sebelumnya di toko yang sama (contoh: `↑ Naik Rp 3.000 vs 8 Nov 2026`).
+  - 🔻 **Panah Hijau Turun (↓)**: Menunjukkan harga turun / promo dibanding tanggal sebelumnya (contoh: `↓ Turun Rp 2.500 vs 5 Nov 2026`).
+  - ⏺️ **Tanda Setara (=)**: Menunjukkan harga stabil sama persis dengan tanggal sebelumnya (contoh: `= Setara vs 1 Nov 2026`).
+  - 🆕 **Data Perdana**: Penanda barang baru dicatat pertama kali.
 - **Modal Riwayat Komparator Toko**:
-  - Tombol grafik di header menampilkan rangkuman perbandingan harga seluruh barang antar toko dan menandai toko mana yang memiliki harga **TERMURAH**.
+  - Tombol grafik di header menampilkan rangkuman riwayat transaksi seluruh barang antar toko beserta tanggalnya dan menandai toko mana yang memiliki harga **TERMURAH**.
 
 ### 4. Safety Cap / Limit Dompet (F-05)
 - Kartu pemantau anggaran interaktif dengan **batas default Rp 400.000** (dapat diubah kapan saja oleh pengguna melalui modal pengaturan atau klik tombol pensil).

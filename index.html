@@ -69,6 +69,46 @@
       </div>
     </header>
 
+    <!-- Header Sesi Belanja (Metadata Lokasi Supermarket & Tanggal Transaksi) -->
+    <section class="shopping-session-card" id="sessionCard">
+      <div class="session-card-header">
+        <div class="session-title">
+          <i class="fa-solid fa-store text-emerald"></i>
+          <span>Sesi Belanja Aktif</span>
+        </div>
+        <span class="session-badge" id="sessionStoreBadge">Lotte Mart - Puri Indah</span>
+      </div>
+
+      <div class="session-controls-grid">
+        <!-- Selector Lokasi Supermarket -->
+        <div class="session-field">
+          <label for="headerStoreLocation">
+            <i class="fa-solid fa-location-dot"></i> Lokasi Supermarket
+          </label>
+          <div class="custom-select-wrapper">
+            <select id="headerStoreLocation" class="session-select">
+              <option value="Lotte Mart Grocery - Puri Indah" selected>Lotte Mart Grocery - Puri Indah</option>
+              <option value="Superindo">Superindo</option>
+              <option value="Indomaret">Indomaret</option>
+              <option value="Alfamart">Alfamart</option>
+              <option value="Pasar Modern">Pasar Modern</option>
+              <option value="Hypermart">Hypermart</option>
+              <option value="Transmart">Transmart</option>
+            </select>
+            <i class="fa-solid fa-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <!-- Selector Tanggal Transaksi -->
+        <div class="session-field">
+          <label for="headerShoppingDate">
+            <i class="fa-solid fa-calendar-day"></i> Tanggal Transaksi
+          </label>
+          <input type="date" id="headerShoppingDate" class="session-date-input">
+        </div>
+      </div>
+    </section>
+
     <!-- F-05: Safety Cap / Limit Dompet Card -->
     <section class="safety-cap-card" id="safetyCapSection">
       <div class="card-header">
@@ -105,7 +145,7 @@
         </div>
         <div class="progress-markers">
           <span>0%</span>
-          <span class="marker-warn">75%</span>
+          <span class="marker-warn">90% (Waspada)</span>
           <span class="marker-limit">100% (Limit)</span>
         </div>
       </div>
@@ -242,28 +282,39 @@
           </div>
         </div>
 
-        <!-- Input: Lokasi Toko -->
-        <div class="form-group">
-          <label for="inputStoreName">
-            <i class="fa-solid fa-shop"></i> Lokasi Toko <span class="required">*</span>
-          </label>
-          <input type="text" id="inputStoreName" list="storeListHistory" placeholder="Ketik nama toko atau pilih di bawah" required autocomplete="off">
-          <datalist id="storeListHistory">
-            <option value="Superindo">
-            <option value="Alfamart">
-            <option value="Indomaret">
-            <option value="Hypermart">
-            <option value="Transmart">
-            <option value="Pasar Tradisional">
-            <option value="Pasar Modern">
-          </datalist>
-          <!-- Quick Store Chips -->
-          <div class="store-quick-chips">
-            <button type="button" class="store-chip" data-store="Superindo">Superindo</button>
-            <button type="button" class="store-chip" data-store="Indomaret">Indomaret</button>
-            <button type="button" class="store-chip" data-store="Alfamart">Alfamart</button>
-            <button type="button" class="store-chip" data-store="Pasar Modern">Pasar Modern</button>
+        <!-- Input: Lokasi Toko & Tanggal Transaksi -->
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="inputStoreName">
+              <i class="fa-solid fa-shop"></i> Lokasi Toko <span class="required">*</span>
+            </label>
+            <input type="text" id="inputStoreName" list="storeListHistory" placeholder="Nama supermarket / toko" required autocomplete="off">
+            <datalist id="storeListHistory">
+              <option value="Lotte Mart Grocery - Puri Indah">
+              <option value="Superindo">
+              <option value="Indomaret">
+              <option value="Alfamart">
+              <option value="Hypermart">
+              <option value="Transmart">
+              <option value="Pasar Modern">
+            </datalist>
           </div>
+
+          <div class="form-group">
+            <label for="inputShoppingDate">
+              <i class="fa-solid fa-calendar-day"></i> Tanggal <span class="required">*</span>
+            </label>
+            <input type="date" id="inputShoppingDate" required>
+          </div>
+        </div>
+
+        <!-- Quick Store Chips -->
+        <div class="store-quick-chips">
+          <button type="button" class="store-chip highlight" data-store="Lotte Mart Grocery - Puri Indah">Lotte Mart - Puri Indah</button>
+          <button type="button" class="store-chip" data-store="Superindo">Superindo</button>
+          <button type="button" class="store-chip" data-store="Indomaret">Indomaret</button>
+          <button type="button" class="store-chip" data-store="Alfamart">Alfamart</button>
+          <button type="button" class="store-chip" data-store="Pasar Modern">Pasar Modern</button>
         </div>
 
         <!-- Input: Kategori -->
@@ -296,7 +347,7 @@
             </label>
             <div class="qty-stepper-box">
               <button type="button" id="btnQtyMinus" class="btn-qty-step" aria-label="Kurang">-</button>
-              <input type="number" id="inputQuantity" min="1" max="999" value="1" required>
+              <input type="number" id="inputQuantity" inputmode="numeric" min="1" max="999" value="1" required>
               <button type="button" id="btnQtyPlus" class="btn-qty-step" aria-label="Tambah">+</button>
             </div>
           </div>
@@ -329,7 +380,7 @@
           </label>
           <div class="input-with-currency">
             <span class="currency-prefix">Rp</span>
-            <input type="number" id="inputUnitPrice" placeholder="Contoh: 25000" min="0" step="50" required>
+            <input type="number" id="inputUnitPrice" inputmode="numeric" placeholder="Contoh: 25000" min="0" step="50" required>
           </div>
         </div>
 
@@ -363,14 +414,14 @@
               <div class="form-group">
                 <label for="inputDiscount1">Diskon 1 (%)</label>
                 <div class="input-with-suffix">
-                  <input type="number" id="inputDiscount1" min="0" max="99" placeholder="0" value="0">
+                  <input type="number" id="inputDiscount1" inputmode="numeric" min="0" max="99" placeholder="0" value="0">
                   <span class="suffix">%</span>
                 </div>
               </div>
               <div class="form-group">
                 <label for="inputDiscount2">Diskon 2 (Tambahan %)</label>
                 <div class="input-with-suffix">
-                  <input type="number" id="inputDiscount2" min="0" max="99" placeholder="0" value="0">
+                  <input type="number" id="inputDiscount2" inputmode="numeric" min="0" max="99" placeholder="0" value="0">
                   <span class="suffix">%</span>
                 </div>
               </div>
@@ -447,7 +498,7 @@
           <label for="qcPrice">Harga Barang di Label (Rp)</label>
           <div class="input-with-currency">
             <span class="currency-prefix">Rp</span>
-            <input type="number" id="qcPrice" placeholder="100000" value="100000">
+            <input type="number" id="qcPrice" inputmode="numeric" placeholder="100000" value="100000">
           </div>
         </div>
 
@@ -455,14 +506,14 @@
           <div class="form-group">
             <label for="qcD1">Diskon 1 (%)</label>
             <div class="input-with-suffix">
-              <input type="number" id="qcD1" value="50" min="0" max="99">
+              <input type="number" id="qcD1" inputmode="numeric" value="50" min="0" max="99">
               <span class="suffix">%</span>
             </div>
           </div>
           <div class="form-group">
             <label for="qcD2">Diskon 2 (%)</label>
             <div class="input-with-suffix">
-              <input type="number" id="qcD2" value="20" min="0" max="99">
+              <input type="number" id="qcD2" inputmode="numeric" value="20" min="0" max="99">
               <span class="suffix">%</span>
             </div>
           </div>
@@ -477,7 +528,7 @@
 
         <div class="form-group" style="margin-top: 12px;">
           <label for="qcQty">Jika Beli Berapa pcs?</label>
-          <input type="number" id="qcQty" value="1" min="1" max="99">
+          <input type="number" id="qcQty" inputmode="numeric" value="1" min="1" max="99">
         </div>
 
         <!-- Quick Calc Results Card -->
@@ -560,7 +611,7 @@
           </label>
           <div class="input-with-currency">
             <span class="currency-prefix">Rp</span>
-            <input type="number" id="inputBudgetCapSetting" value="400000" min="10000" step="10000">
+            <input type="number" id="inputBudgetCapSetting" inputmode="numeric" value="400000" min="10000" step="10000">
           </div>
           <button id="btnSaveBudgetCap" class="btn-primary" style="margin-top: 10px; width: 100%;">
             <i class="fa-solid fa-check"></i> Simpan Batas Anggaran
