@@ -71,13 +71,13 @@
 
     <!-- Auth Main Card -->
     <div class="auth-card">
-      <!-- Quick Demo Account Hint / 1-Click Fill -->
-      <div class="auth-quick-demo-pill" id="btnQuickFillDemoAccount" title="Klik untuk otomatis isi akun demo">
+      <!-- Quick Demo Account Hint / 1-Click Fill & Instant Login -->
+      <div class="auth-quick-demo-pill" id="btnQuickFillDemoAccount" title="Klik untuk langsung masuk instan akun demo Fayyaz">
         <div class="demo-badge-icon">
-          <i class="fa-solid fa-wand-magic-sparkles text-emerald"></i>
+          <i class="fa-solid fa-bolt text-emerald"></i>
         </div>
         <div class="demo-badge-text">
-          <span class="demo-label">Akun Demo Pengujian:</span>
+          <span class="demo-label">Akun Demo Pengujian (1-Klik Masuk Langsung):</span>
           <strong>fayyaz@mutiarabangsa.sch.id</strong>
         </div>
         <i class="fa-solid fa-arrow-turn-down text-emerald"></i>
@@ -94,24 +94,24 @@
       </div>
 
       <!-- Email & Password Form -->
-      <form id="authEmailForm" class="auth-form" autocomplete="on">
+      <form id="authEmailForm" class="auth-form" autocomplete="on" novalidate>
         <div class="form-group">
           <label for="authEmail">
-            <i class="fa-solid fa-envelope"></i> Alamat Email <span class="required">*</span>
+            <i class="fa-solid fa-envelope"></i> Alamat Email
           </label>
           <div class="auth-input-wrapper">
             <i class="fa-solid fa-at input-icon"></i>
-            <input type="email" id="authEmail" placeholder="contoh: fayyaz@mutiarabangsa.sch.id" required autocomplete="email">
+            <input type="email" id="authEmail" placeholder="contoh: fayyaz@mutiarabangsa.sch.id" autocomplete="email">
           </div>
         </div>
 
         <div class="form-group">
           <label for="authPassword">
-            <i class="fa-solid fa-lock"></i> Kata Sandi (Password) <span class="required">*</span>
+            <i class="fa-solid fa-lock"></i> Kata Sandi (Password)
           </label>
           <div class="auth-input-wrapper">
             <i class="fa-solid fa-key input-icon"></i>
-            <input type="password" id="authPassword" placeholder="Minimal 6 karakter" required autocomplete="current-password">
+            <input type="password" id="authPassword" placeholder="fayyaz123 (atau min. 6 karakter)" autocomplete="current-password">
             <button type="button" id="btnTogglePasswordVisibility" class="btn-toggle-eye" aria-label="Lihat kata sandi">
               <i class="fa-solid fa-eye" id="eyeIcon"></i>
             </button>
@@ -214,8 +214,8 @@
     </button>
   </div>
 
-  <!-- Main Mobile Container (Hidden until user logs in) -->
-  <div class="app-container" id="mainAppContainer" style="display: none !important;">
+  <!-- Main Mobile Container (Hidden until user logs in via CSS .is-unauthenticated) -->
+  <div class="app-container" id="mainAppContainer">
 
     <!-- Header -->
     <header class="app-header">

@@ -88,8 +88,16 @@ body.is-unauthenticated #mainAppContainer {
   display: none !important;
 }
 
+body.is-authenticated #mainAppContainer {
+  display: block !important;
+}
+
 body.is-authenticated #authScreenContainer {
   display: none !important;
+}
+
+body.is-unauthenticated #authScreenContainer {
+  display: flex !important;
 }
 
 body {
