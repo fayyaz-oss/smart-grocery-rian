@@ -104,7 +104,6 @@ const formatCountdownHoursMinutesSeconds = (ms) => {
   const secs = totalSecs % 60;
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 };
-const formatMinutesSeconds = formatCountdownHoursMinutesSeconds;
 
 // Global App State
 const APP_STATE = {
