@@ -25,7 +25,8 @@ const firebaseConfig = {
 // ========================================================
 const FIRESTORE_SESSION = {
   COLLECTION: 'sessions',
-  DOC_ID: 'rian_main_session'
+  DOC_ID: 'rian_main_session',
+  HISTORY_COLLECTION: 'shopping_history'
 };
 
 // Date Helpers
@@ -123,6 +124,7 @@ const APP_STATE = {
 let db = null;
 let unsubscribeSnapshot = null;
 let unsubscribeConfigSnapshot = null;
+let unsubscribeHistorySnapshot = null;
 
 // DOM Elements cache
 let dom = {};
@@ -1766,24 +1768,26 @@ const initFirebaseRealtime = async () => {
 
         let shouldUpdateUI = false;
 
-        // 1. SINKRONISASI DAFTAR ITEM BELANJAAN (PERBAIKAN RACE CONDITION / DATA HILANG SAAT RELOAD)
+        // 1. SINKRONISASI DAFTAR ITEM BELANJAAN (MULTI-DEVICE & CHECKOUT HANDLING)
         if (Array.isArray(data.items)) {
           if (data.items.length > 0) {
-            // Firestore memiliki data valid -> update data lokal
+            // Firestore memiliki data belanjaan aktif -> update data lokal
             APP_STATE.items = data.items;
             saveItemsLocally();
             updatePriceHistoryMap(APP_STATE.items);
             shouldUpdateUI = true;
-          } else if (data.items.length === 0 && APP_STATE.items.length > 0) {
-            // FIX RACE CONDITION: Dokumen di Firestore masih kosong [] padahal lokal memiliki data belanjaan yang sah!
-            // JANGAN timpa data lokal dengan []. Sebaliknya, sinkronkan data lokal yang sudah ada ke Firestore.
-            console.log('[Firestore] Mempertahankan data lokal dan mengunggah ke sesi Cloud Firestore...');
-            syncSessionToFirestore();
-          } else if (data.items.length === 0 && APP_STATE.items.length === 0) {
-            // Memang kedua sisi kosong
-            APP_STATE.items = [];
-            saveItemsLocally();
-            shouldUpdateUI = true;
+          } else if (data.items.length === 0) {
+            // Jika ada event checkout dari perangkat lain (HP/PC) atau keranjang sengaja dikosongkan
+            const isCheckoutEvent = data.lastAction === 'checkout' || Boolean(data.lastCheckoutAt);
+            if (isCheckoutEvent || APP_STATE.items.length === 0) {
+              APP_STATE.items = [];
+              saveItemsLocally();
+              shouldUpdateUI = true;
+            } else if (APP_STATE.items.length > 0) {
+              // Dokumen baru dibuat di Firestore tanpa histori aktivitas -> unggah data lokal
+              console.log('[Firestore] Sinkronisasi data lokal ke sesi baru...');
+              syncSessionToFirestore();
+            }
           }
         } else if (!data.items && APP_STATE.items.length > 0) {
           // Dokumen ada tapi field items belum ada -> unggah data lokal
@@ -1851,11 +1855,17 @@ const initFirebaseRealtime = async () => {
           shouldUpdateUI = true;
         }
 
-        // 7. Sinkronisasi Riwayat Transaksi Checkout
-        if (Array.isArray(data.historyTransactions)) {
-          APP_STATE.historyTransactions = data.historyTransactions;
+        // 7. Sinkronisasi Riwayat Transaksi Checkout dari Dokumen Sesi
+        if (Array.isArray(data.historyTransactions) && data.historyTransactions.length > 0) {
+          const map = new Map();
+          data.historyTransactions.forEach(t => map.set(t.id, t));
+          APP_STATE.historyTransactions.forEach(t => {
+            if (!map.has(t.id)) map.set(t.id, t);
+          });
+          APP_STATE.historyTransactions = Array.from(map.values()).sort((a, b) => (b.timestamp || b.createdAt || 0) - (a.timestamp || a.createdAt || 0));
           saveHistoryLocally();
           renderHistoryList();
+          updateHistoryBadge();
         }
 
         if (shouldUpdateUI) {
@@ -1881,6 +1891,40 @@ const initFirebaseRealtime = async () => {
       updatePriceHistoryMap(APP_STATE.items);
       updateBudgetSafetyDisplay();
       renderGroceryList();
+    });
+
+    // ========================================================
+    // SETUP LISTENER REALTIME ONSNAPSHOT KOLEKSI SHOPPING_HISTORY
+    // Memastikan setiap transaksi baru yang di-checkout di HP langsung muncul di PC detik itu juga
+    // ========================================================
+    if (unsubscribeHistorySnapshot) {
+      unsubscribeHistorySnapshot();
+    }
+
+    const historyColRef = db.collection(FIRESTORE_SESSION.HISTORY_COLLECTION);
+    unsubscribeHistorySnapshot = historyColRef.onSnapshot((querySnap) => {
+      const cloudHistory = [];
+      querySnap.forEach((doc) => {
+        const item = doc.data();
+        if (item) cloudHistory.push(item);
+      });
+
+      cloudHistory.sort((a, b) => (b.timestamp || b.createdAt || 0) - (a.timestamp || a.createdAt || 0));
+
+      if (cloudHistory.length > 0) {
+        const map = new Map();
+        cloudHistory.forEach(t => map.set(t.id, t));
+        APP_STATE.historyTransactions.forEach(t => {
+          if (!map.has(t.id)) map.set(t.id, t);
+        });
+        APP_STATE.historyTransactions = Array.from(map.values()).sort((a, b) => (b.timestamp || b.createdAt || 0) - (a.timestamp || a.createdAt || 0));
+        saveHistoryLocally();
+        renderHistoryList();
+        updateHistoryBadge();
+        console.log('[Firestore History] Realtime onSnapshot menerima riwayat belanja dari Cloud:', APP_STATE.historyTransactions.length);
+      }
+    }, (histErr) => {
+      console.warn('[Firestore History onSnapshot]:', histErr);
     });
 
   } catch (err) {
@@ -3658,14 +3702,15 @@ const confirmCheckoutAndSaveHistory = async () => {
     totalSaved,
     walletLimit: APP_STATE.budgetCap,
     isOverBudget: totalExpense > APP_STATE.budgetCap,
-    timestamp: now
+    timestamp: now,
+    createdAt: now
   };
 
-  // Tambahkan ke riwayat transaksi belanja
+  // 1. Simpan ke state lokal & storage
   APP_STATE.historyTransactions.unshift(newTrx);
   saveHistoryLocally();
 
-  // Reset keranjang belanja aktif
+  // 2. Kosongkan keranjang belanja aktif secara lokal
   const checkedOutCount = APP_STATE.items.length;
   const sampleFirstItem = APP_STATE.items[0];
   APP_STATE.items = [];
@@ -3673,24 +3718,63 @@ const confirmCheckoutAndSaveHistory = async () => {
   updateBudgetSafetyDisplay();
   renderGroceryList();
 
-  // Tutup modal struk
+  // 3. Tutup modal struk
   if (dom.checkoutReceiptModal) {
     dom.checkoutReceiptModal.classList.remove('active');
   }
 
-  // Realtime Cloud Firestore Sync
-  await syncSessionToFirestore({
-    items: [],
-    historyTransactions: APP_STATE.historyTransactions
-  });
+  // 4. Simpan ke Cloud Firestore serentak (Batch / Promise.all)
+  if (db) {
+    try {
+      const serverTimestamp = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
+        ? firebase.firestore.FieldValue.serverTimestamp()
+        : Date.now();
 
-  // Berikan hadiah reward voucher TikTok & selebrasi!
+      const batch = db.batch();
+      // Simpan dokumen riwayat ke koleksi 'shopping_history'
+      const historyDocRef = db.collection(FIRESTORE_SESSION.HISTORY_COLLECTION).doc(newTrx.id);
+      batch.set(historyDocRef, newTrx);
+
+      // Kosongkan keranjang aktif & catat checkout di dokumen sesi bersama
+      const sessionDocRef = db.collection(FIRESTORE_SESSION.COLLECTION).doc(FIRESTORE_SESSION.DOC_ID);
+      batch.set(sessionDocRef, {
+        items: [],
+        lastAction: 'checkout',
+        lastCheckoutAt: now,
+        lastCheckoutId: newTrx.id,
+        historyTransactions: APP_STATE.historyTransactions,
+        updatedAt: serverTimestamp
+      }, { merge: true });
+
+      await batch.commit();
+      console.log('[Firestore] Batch checkout berhasil: item keranjang dikosongkan & riwayat tersimpan ke Cloud Firestore.');
+    } catch (err) {
+      console.error('[Firestore] Batch checkout gagal, fallback ke syncSessionToFirestore:', err);
+      await syncSessionToFirestore({
+        items: [],
+        lastAction: 'checkout',
+        lastCheckoutAt: now,
+        lastCheckoutId: newTrx.id,
+        historyTransactions: APP_STATE.historyTransactions
+      });
+    }
+  } else {
+    await syncSessionToFirestore({
+      items: [],
+      lastAction: 'checkout',
+      lastCheckoutAt: now,
+      lastCheckoutId: newTrx.id,
+      historyTransactions: APP_STATE.historyTransactions
+    });
+  }
+
+  // 5. Berikan hadiah reward voucher TikTok & selebrasi!
   grantTikTokReward(sampleFirstItem || { name: 'Semua Belanjaan' });
 
   playSound('success');
   showToast(`Checkout berhasil! ${checkedOutCount} barang tersimpan ke Riwayat Belanja 🎉`, 'success', 3500);
 
-  // Otomatis pindah ke tab Riwayat agar pengguna langsung melihat arsip struk belanja
+  // 6. Otomatis pindah ke tab Riwayat agar pengguna langsung melihat arsip struk belanja
   switchTab('riwayat');
 };
 
@@ -3803,7 +3887,24 @@ const clearTransactionHistory = async () => {
     APP_STATE.historyTransactions = [];
     saveHistoryLocally();
     renderHistoryList();
-    await syncSessionToFirestore({ historyTransactions: [] });
+
+    if (db) {
+      try {
+        const snap = await db.collection(FIRESTORE_SESSION.HISTORY_COLLECTION).get();
+        const batch = db.batch();
+        snap.forEach(doc => batch.delete(doc.ref));
+        const sessionDocRef = db.collection(FIRESTORE_SESSION.COLLECTION).doc(FIRESTORE_SESSION.DOC_ID);
+        batch.set(sessionDocRef, { historyTransactions: [] }, { merge: true });
+        await batch.commit();
+        console.log('[Firestore] Riwayat transaksi di Cloud Firestore berhasil dibersihkan.');
+      } catch(e) {
+        console.warn('[Firestore] Gagal batch delete history, fallback:', e);
+        await syncSessionToFirestore({ historyTransactions: [] });
+      }
+    } else {
+      await syncSessionToFirestore({ historyTransactions: [] });
+    }
+
     playSound('delete');
     showToast('Riwayat transaksi berhasil dibersihkan!', 'success');
   }
