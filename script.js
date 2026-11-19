@@ -76,6 +76,24 @@ const STORAGE_KEYS = {
   TRANSACTIONS: 'smart_grocery_checkout_history'
 };
 
+// Konfigurasi Timer Auto-Expire Barang Belum Dibeli (48 Jam & Warning < 3 Jam)
+const TIMER_CONFIG = {
+  DEFAULT_WAITING_MS: 48 * 60 * 60 * 1000, // 48 Jam (172.800.000 ms / 2880 menit)
+  EXTEND_DURATION_MS: 24 * 60 * 60 * 1000, // Perpanjang +24 Jam (86.400.000 ms)
+  URGENT_THRESHOLD_MS: 3 * 60 * 60 * 1000  // Ambang batas peringatan < 3 Jam (10.800.000 ms)
+};
+
+// Helper Format Jam:Menit:Detik (HH:MM:SS) untuk Badge Countdown
+const formatCountdownHoursMinutesSeconds = (ms) => {
+  const safeMs = Math.max(0, ms);
+  const totalSecs = Math.floor(safeMs / 1000);
+  const hours = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+const formatMinutesSeconds = formatCountdownHoursMinutesSeconds;
+
 // Global App State
 const APP_STATE = {
   isOnline: navigator.onLine,
@@ -1358,15 +1376,13 @@ const renderGroceryList = () => {
       `;
     }
 
-    // Gamifikasi: Perhitungan Countdown Waktu Tunggu 15 Menit
-    if (!item.isBought && !item.expiresAt) {
-      item.expiresAt = Date.now() + (15 * 60 * 1000);
+    // Gamifikasi: Perhitungan Countdown Waktu Tunggu 48 Jam (Auto-Expire)
+    if (!item.isBought && (!item.expiresAt || item.expiresAt <= Date.now() + 60000)) {
+      item.expiresAt = Date.now() + TIMER_CONFIG.DEFAULT_WAITING_MS;
     }
-    const remainingMs = item.isBought ? 0 : Math.max(0, (item.expiresAt || (Date.now() + 15 * 60 * 1000)) - Date.now());
-    const isUrgent = !item.isBought && remainingMs <= 180000;
-    const mins = Math.floor(remainingMs / 60000);
-    const secs = Math.floor((remainingMs % 60000) / 1000);
-    const formattedCountdown = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    const remainingMs = item.isBought ? 0 : Math.max(0, (item.expiresAt || (Date.now() + TIMER_CONFIG.DEFAULT_WAITING_MS)) - Date.now());
+    const isUrgent = !item.isBought && remainingMs <= TIMER_CONFIG.URGENT_THRESHOLD_MS;
+    const formattedCountdown = formatCountdownHoursMinutesSeconds(remainingMs);
 
     return `
       <div class="grocery-item-card ${item.isBought ? 'is-bought' : ''}" data-id="${item.id}">
@@ -1401,8 +1417,8 @@ const renderGroceryList = () => {
                   <i class="fa-solid fa-stopwatch ${isUrgent ? 'fa-beat' : ''}"></i>
                   <span id="timer-display-${item.id}">${formattedCountdown}</span>
                 </span>
-                <button type="button" class="btn-extend-countdown" data-action="extend-timer" data-id="${item.id}" title="Perpanjang batas waktu tunggu +15 menit">
-                  <i class="fa-solid fa-clock-rotate-left"></i> +15m
+                <button type="button" class="btn-extend-countdown" data-action="extend-timer" data-id="${item.id}" title="Perpanjang batas waktu tunggu +24 jam">
+                  <i class="fa-solid fa-clock-rotate-left"></i> +24j
                 </button>
               </div>
             ` : `
@@ -1568,7 +1584,7 @@ const saveItem = async (itemData) => {
       ...itemData,
       id: `item_${now}_${Math.random().toString(36).substr(2, 6)}`,
       walletLimit: APP_STATE.budgetCap,
-      expiresAt: now + (15 * 60 * 1000),
+      expiresAt: now + TIMER_CONFIG.DEFAULT_WAITING_MS,
       createdAt: now,
       updatedAt: now
     };
@@ -1620,9 +1636,9 @@ const toggleBoughtStatus = async (itemId) => {
     grantTikTokReward(item);
   } else {
     playSound('click');
-    // Jika dibatalkan dari sudah dibeli, reset countdown 15 menit
+    // Jika dibatalkan dari sudah dibeli, reset countdown 48 jam
     if (!item.expiresAt || item.expiresAt <= Date.now()) {
-      item.expiresAt = Date.now() + (15 * 60 * 1000);
+      item.expiresAt = Date.now() + TIMER_CONFIG.DEFAULT_WAITING_MS;
       APP_STATE.warnedItems.delete(item.id);
     }
   }
@@ -2176,7 +2192,7 @@ const loadDemoGroceryData = async () => {
       ...item,
       id: `item_demo_${now}_${index}`,
       walletLimit: APP_STATE.budgetCap,
-      expiresAt: now + (15 * 60 * 1000),
+      expiresAt: now + TIMER_CONFIG.DEFAULT_WAITING_MS,
       discountedUnitPrice: discCalc.finalUnitPrice,
       unitSaved: discCalc.savedUnitPrice,
       subtotal: discCalc.finalUnitPrice * item.quantity,
@@ -3269,7 +3285,7 @@ const extendItemCountdown = async (itemId) => {
   if (!item) return;
 
   const currentExpiry = item.expiresAt || Date.now();
-  item.expiresAt = Math.max(currentExpiry, Date.now()) + (15 * 60 * 1000);
+  item.expiresAt = Math.max(currentExpiry, Date.now()) + TIMER_CONFIG.EXTEND_DURATION_MS;
   APP_STATE.warnedItems.delete(itemId);
 
   saveItemsLocally();
@@ -3277,7 +3293,7 @@ const extendItemCountdown = async (itemId) => {
   await syncSessionToFirestore();
 
   playSound('success');
-  showToast(`Waktu tunggu "${item.name}" berhasil diperpanjang +15 menit! ⏳`, 'success', 2500);
+  showToast(`Waktu tunggu "${item.name}" berhasil diperpanjang +24 jam! ⏳`, 'success', 2500);
 };
 
 const handleItemAutoExpired = async (item) => {
@@ -3291,7 +3307,7 @@ const handleItemAutoExpired = async (item) => {
   await syncSessionToFirestore();
 
   playSound('delete');
-  showToast(`⚠️ Peringatan: Barang "${item.name}" telah kedaluwarsa (15 menit) dan otomatis dihapus dari daftar tunggu.`, 'danger', 4500);
+  showToast(`⚠️ Peringatan: Barang "${item.name}" telah kedaluwarsa (48 jam) dan otomatis dihapus dari daftar tunggu.`, 'danger', 4500);
 };
 
 let _countdownInterval = null;
@@ -3305,34 +3321,34 @@ const startCountdownTimer = () => {
       if (item.isBought) continue;
 
       if (!item.expiresAt) {
-        item.expiresAt = now + (15 * 60 * 1000);
+        item.expiresAt = now + TIMER_CONFIG.DEFAULT_WAITING_MS;
       }
 
       const remainingMs = item.expiresAt - now;
 
-      // 1. Kedaluwarsa (00:00)
+      // 1. Kedaluwarsa (00:00:00)
       if (remainingMs <= 0) {
         handleItemAutoExpired(item);
         return;
       }
 
-      // 2. Warning jika < 3 menit (180.000 ms)
-      if (remainingMs <= 180000) {
+      // 2. Warning jika < 3 jam (10.800.000 ms)
+      if (remainingMs <= TIMER_CONFIG.URGENT_THRESHOLD_MS) {
         if (!APP_STATE.warnedItems.has(item.id)) {
           APP_STATE.warnedItems.add(item.id);
           playSound('warning');
-          showToast(`⚠️ Peringatan! Barang "${item.name}" akan segera menghilang dari daftar tunggu (< 3 menit). Segera beli atau perpanjang waktu!`, 'warning', 5000);
+          showToast(`⚠️ Peringatan! Barang "${item.name}" akan segera menghilang dari daftar tunggu (< 3 jam). Segera beli atau perpanjang waktu!`, 'warning', 5000);
         }
       }
 
       // Update badge UI real-time
       const timerEl = document.getElementById(`timer-display-${item.id}`);
       if (timerEl) {
-        timerEl.textContent = formatMinutesSeconds(remainingMs);
+        timerEl.textContent = formatCountdownHoursMinutesSeconds(remainingMs);
       }
       const wrapEl = document.getElementById(`countdown-wrap-${item.id}`);
       if (wrapEl) {
-        wrapEl.classList.toggle('urgent-warning', remainingMs <= 180000);
+        wrapEl.classList.toggle('urgent-warning', remainingMs <= TIMER_CONFIG.URGENT_THRESHOLD_MS);
       }
     }
   }, 1000);

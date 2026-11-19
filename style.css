@@ -850,7 +850,7 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-bottom: 200px;
+  padding-bottom: 220px;
 }
 
 .list-header {
@@ -1329,9 +1329,9 @@ body::before {
   transition: bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-/* Ketika panel "TOTAL BELANJA AKTIF" muncul, FAB bergeser tepat di atas panel tersebut */
+/* Ketika panel "TOTAL BELANJA AKTIF" muncul, FAB bergeser tepat di atas panel tersebut (bottom: 165px) */
 body.has-checkout-bar .fab-add {
-  bottom: calc(156px + env(safe-area-inset-bottom, 10px));
+  bottom: calc(165px + env(safe-area-inset-bottom, 10px));
 }
 
 @media (max-width: 480px) {
@@ -2312,7 +2312,7 @@ select:focus {
     bottom: calc(90px + env(safe-area-inset-bottom, 10px));
   }
   body.has-checkout-bar .fab-add {
-    bottom: calc(156px + env(safe-area-inset-bottom, 12px));
+    bottom: calc(165px + env(safe-area-inset-bottom, 12px));
   }
 }
 
