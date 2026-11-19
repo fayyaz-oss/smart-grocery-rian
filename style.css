@@ -81,11 +81,26 @@ body::before {
   z-index: 0;
 }
 
+/* ========================================================
+   AUTHENTICATION VIEW GUARD (Pemisah Login & Main App)
+   ======================================================== */
+body.is-unauthenticated #mainAppContainer {
+  display: none !important;
+}
+
+body.is-authenticated #authScreenContainer {
+  display: none !important;
+}
+
+body {
+  padding-bottom: 120px;
+}
+
 /* App Wrapper - Mobile First Layout */
 .app-container {
   max-width: 480px;
   margin: 0 auto;
-  padding: 14px 16px 110px 16px;
+  padding: 14px 16px 120px 16px;
   position: relative;
   z-index: 1;
 }
@@ -859,8 +874,43 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   margin-top: 4px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.list-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Tombol Tambah Belanja Inline Header (Sejajar dengan Judul Daftar Belanjaan) */
+.btn-add-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-add-inline:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.55);
+}
+
+.btn-add-inline:active {
+  transform: translateY(1px);
 }
 
 .list-title {
@@ -1323,18 +1373,18 @@ body::before {
    ======================================================== */
 .fab-add {
   position: fixed;
-  bottom: calc(90px + env(safe-area-inset-bottom, 8px));
-  right: max(16px, calc((100vw - 430px) / 2 + 16px));
+  bottom: calc(92px + env(safe-area-inset-bottom, 8px));
+  right: 20px;
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #ffffff;
   border: none;
   border-radius: 50px;
-  padding: 12px 20px;
+  padding: 12px 18px;
   display: flex;
   align-items: center;
   gap: 8px;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45);
@@ -1342,14 +1392,18 @@ body::before {
   transition: bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-/* Ketika panel "TOTAL BELANJA AKTIF" muncul, FAB bergeser tepat di atas panel tersebut (bottom: 165px) */
+/* Ketika panel "TOTAL BELANJA AKTIF" muncul, FAB bergeser tepat di atas panel tersebut */
 body.has-checkout-bar .fab-add {
-  bottom: calc(165px + env(safe-area-inset-bottom, 10px));
+  bottom: calc(156px + env(safe-area-inset-bottom, 10px));
 }
 
 @media (max-width: 480px) {
   .fab-add {
-    right: 16px;
+    right: 20px;
+    bottom: calc(92px + env(safe-area-inset-bottom, 10px));
+  }
+  body.has-checkout-bar .fab-add {
+    bottom: calc(156px + env(safe-area-inset-bottom, 12px));
   }
 }
 
@@ -2363,11 +2417,11 @@ select:focus {
   }
 
   .fab-add {
-    right: 16px;
-    bottom: calc(90px + env(safe-area-inset-bottom, 10px));
+    right: 20px;
+    bottom: calc(92px + env(safe-area-inset-bottom, 10px));
   }
   body.has-checkout-bar .fab-add {
-    bottom: calc(165px + env(safe-area-inset-bottom, 12px));
+    bottom: calc(156px + env(safe-area-inset-bottom, 12px));
   }
 }
 

@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body class="is-unauthenticated">
   <!-- LAKEY INSPIRED - Chill Day Royalty-Free Lo-Fi Background Audio -->
   <audio id="bgmAudio" loop preload="auto">
     <source src="./assets/audio/chill-day.mp3" type="audio/mpeg">
@@ -215,7 +215,7 @@
   </div>
 
   <!-- Main Mobile Container (Hidden until user logs in) -->
-  <div class="app-container" id="mainAppContainer">
+  <div class="app-container" id="mainAppContainer" style="display: none !important;">
 
     <!-- Header -->
     <header class="app-header">
@@ -364,6 +364,12 @@
           </h2>
 
           <div class="list-actions-right">
+            <!-- Tombol Tambah Belanja (Inline Header Elegan) -->
+            <button type="button" id="btnOpenAddModal" class="btn-primary btn-add-inline" title="Tambah Barang Belanja Baru">
+              <i class="fa-solid fa-plus"></i>
+              <span>Tambah Belanja</span>
+            </button>
+
             <!-- Sort Dropdown -->
             <div class="custom-select-wrapper">
               <select id="sortSelect" class="sort-select" title="Urutkan daftar">
@@ -400,8 +406,8 @@
         </div>
       </main>
 
-      <!-- Floating Action Button (FAB) for adding new item -->
-      <button id="btnOpenAddModal" class="fab-add" aria-label="Tambah Belanjaan">
+      <!-- Floating Action Button (FAB) for adding new item (Pinned above Bottom Dock) -->
+      <button type="button" id="btnFabAddModal" class="fab-add" aria-label="Tambah Belanjaan" title="Tambah Belanja">
         <i class="fa-solid fa-plus"></i>
         <span class="fab-text">Tambah Belanja</span>
       </button>

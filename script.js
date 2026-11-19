@@ -190,6 +190,7 @@ const initDom = () => {
     btnEmptyAdd: document.getElementById('btnEmptyAdd'),
     btnLoadDemoData: document.getElementById('btnLoadDemoData'),
     btnOpenAddModal: document.getElementById('btnOpenAddModal'),
+    btnFabAddModal: document.getElementById('btnFabAddModal'),
 
     // Add/Edit Item Modal
     itemModal: document.getElementById('itemModal'),
@@ -691,8 +692,11 @@ const updateAuthSessionUI = () => {
 
   if (APP_STATE.currentUser) {
     // Pengguna sudah login -> Tampilkan Layar Belanja, Sembunyikan Gerbang Login
-    if (authScreen) authScreen.style.display = 'none';
-    if (mainApp) mainApp.style.display = 'block';
+    document.body.classList.remove('is-unauthenticated');
+    document.body.classList.add('is-authenticated');
+
+    if (authScreen) authScreen.style.setProperty('display', 'none', 'important');
+    if (mainApp) mainApp.style.setProperty('display', 'block', 'important');
 
     if (userNameEl) userNameEl.textContent = APP_STATE.currentUser.displayName || 'Pengguna Smart Grocery';
     if (userEmailEl) userEmailEl.textContent = APP_STATE.currentUser.email || APP_STATE.currentUser.phone || 'Sesi Aktif';
@@ -702,8 +706,11 @@ const updateAuthSessionUI = () => {
     }
   } else {
     // Pengguna belum login -> Kunci Aplikasi: Tampilkan Gerbang Login, Sembunyikan Layar Belanja
-    if (authScreen) authScreen.style.display = 'flex';
-    if (mainApp) mainApp.style.display = 'none';
+    document.body.classList.remove('is-authenticated');
+    document.body.classList.add('is-unauthenticated');
+
+    if (authScreen) authScreen.style.setProperty('display', 'flex', 'important');
+    if (mainApp) mainApp.style.setProperty('display', 'none', 'important');
   }
 };
 
@@ -2880,6 +2887,7 @@ const setupEventListeners = () => {
 
   // Modal Add Open / Close
   if (dom.btnOpenAddModal) dom.btnOpenAddModal.addEventListener('click', () => { playSound('click'); openAddEditModal(null); });
+  if (dom.btnFabAddModal) dom.btnFabAddModal.addEventListener('click', () => { playSound('click'); openAddEditModal(null); });
   if (dom.btnEmptyAdd) dom.btnEmptyAdd.addEventListener('click', () => { playSound('click'); openAddEditModal(null); });
   if (dom.btnCloseModal) dom.btnCloseModal.addEventListener('click', closeModal);
   if (dom.btnCancelModal) dom.btnCancelModal.addEventListener('click', closeModal);
