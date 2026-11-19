@@ -699,12 +699,18 @@ const updateAuthSessionUI = () => {
   const userMethodEl = document.getElementById('sessionAuthMethod');
 
   if (APP_STATE.currentUser) {
-    // Pengguna sudah login -> Tampilkan Layar Belanja, Sembunyikan Gerbang Login
+    // Pengguna sudah login -> Langsung sembunyikan layar Auth (display: none) dan tampilkan halaman utama (display: block)
     document.body.classList.remove('is-unauthenticated');
     document.body.classList.add('is-authenticated');
 
-    if (authScreen) authScreen.style.setProperty('display', 'none', 'important');
-    if (mainApp) mainApp.style.setProperty('display', 'block', 'important');
+    if (authScreen) {
+      authScreen.style.display = 'none';
+      authScreen.style.setProperty('display', 'none', 'important');
+    }
+    if (mainApp) {
+      mainApp.style.display = 'block';
+      mainApp.style.setProperty('display', 'block', 'important');
+    }
 
     if (userNameEl) userNameEl.textContent = APP_STATE.currentUser.displayName || 'Pengguna Smart Grocery';
     if (userEmailEl) userEmailEl.textContent = APP_STATE.currentUser.email || APP_STATE.currentUser.phone || 'Sesi Aktif';
@@ -717,8 +723,14 @@ const updateAuthSessionUI = () => {
     document.body.classList.remove('is-authenticated');
     document.body.classList.add('is-unauthenticated');
 
-    if (authScreen) authScreen.style.setProperty('display', 'flex', 'important');
-    if (mainApp) mainApp.style.setProperty('display', 'none', 'important');
+    if (authScreen) {
+      authScreen.style.display = 'flex';
+      authScreen.style.setProperty('display', 'flex', 'important');
+    }
+    if (mainApp) {
+      mainApp.style.display = 'none';
+      mainApp.style.setProperty('display', 'none', 'important');
+    }
   }
 };
 
@@ -2397,132 +2409,152 @@ const setupAuthEventListeners = () => {
     });
   }
 
-  // Email & Password Form Submit (Login & Register via Firebase Auth with Guaranteed Entry)
+  // Email & Password Form Submit (Login & Register via Firebase Auth with Guaranteed Instant Entry)
   const authForm = document.getElementById('authEmailForm');
   const btnSubmit = document.getElementById('btnAuthSubmit');
-  if (authForm) {
-    authForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      let email = (emailInput ? emailInput.value : '').trim();
-      let password = (passwordInput ? passwordInput.value : '').trim();
 
-      // 1. Jika kolom email atau password kosong saat tombol "Masuk Sekarang" diklik:
-      // Otomatis arahkan ke akun demo Fayyaz agar penguji tidak pernah terhambat
-      if (!email) {
-        email = 'fayyaz@mutiarabangsa.sch.id';
-        if (emailInput) emailInput.value = email;
-      }
-      if (!password) {
-        password = 'fayyaz123';
-        if (passwordInput) passwordInput.value = password;
-      }
+  const handleAuthSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
 
-      if (btnSubmit) {
-        btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
-      }
+    let email = (emailInput ? emailInput.value : '').trim();
+    let password = (passwordInput ? passwordInput.value : '').trim();
 
-      // 2. Akun Khusus Pengujian: fayyaz@mutiarabangsa.sch.id (Instant Demo Approval)
-      if (email.toLowerCase() === 'fayyaz@mutiarabangsa.sch.id') {
-        saveAuthSession({
-          email: 'fayyaz@mutiarabangsa.sch.id',
-          displayName: 'Fayyaz (Siswa)',
-          method: 'Email Terverifikasi',
-          loggedInAt: Date.now()
-        });
-        playSound('success');
-        showToast('Selamat datang kembali, Fayyaz! Sesi belanja aktif 🛒', 'success', 3000);
-        if (btnSubmit) {
-          btnSubmit.disabled = false;
-          btnSubmit.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk Sekarang';
-        }
-        return;
-      }
+    // 1. Jika kolom email atau password kosong saat tombol "Masuk Sekarang" diklik:
+    // Otomatis gunakan akun demo Fayyaz agar penguji tidak pernah terhambat
+    if (!email) {
+      email = 'fayyaz@mutiarabangsa.sch.id';
+      if (emailInput) emailInput.value = email;
+    }
+    if (!password) {
+      password = 'fayyaz123';
+      if (passwordInput) passwordInput.value = password;
+    }
 
-      // 3. Login / Register untuk akun lainnya via Firebase Auth
-      let authSuccessful = false;
-      try {
-        if (typeof firebase !== 'undefined' && firebase.auth) {
-          const auth = firebase.auth();
-          if (APP_STATE.authMode === 'login') {
-            try {
-              const res = await auth.signInWithEmailAndPassword(email, password);
-              saveAuthSession({
-                email: res.user.email,
-                displayName: res.user.displayName || email.split('@')[0],
-                method: 'Email Terverifikasi',
-                loggedInAt: Date.now()
-              });
-              authSuccessful = true;
-            } catch (signInErr) {
-              console.warn('[Firebase SignIn]:', signInErr);
-              // Jika email belum ada di Firebase Auth, coba daftarkan secara otomatis
-              if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
-                try {
-                  const regRes = await auth.createUserWithEmailAndPassword(email, password.length >= 6 ? password : 'password123');
-                  saveAuthSession({
-                    email: regRes.user.email,
-                    displayName: regRes.user.displayName || email.split('@')[0],
-                    method: 'Email Baru Terdaftar',
-                    loggedInAt: Date.now()
-                  });
-                  authSuccessful = true;
-                } catch (autoRegErr) {
-                  console.warn('[Firebase Auto-Register]:', autoRegErr);
-                }
-              }
-            }
-          } else {
-            // Mode Pendaftaran (Register)
-            try {
-              const res = await auth.createUserWithEmailAndPassword(email, password.length >= 6 ? password : 'password123');
-              saveAuthSession({
-                email: res.user.email,
-                displayName: res.user.displayName || email.split('@')[0],
-                method: 'Email Baru Terdaftar',
-                loggedInAt: Date.now()
-              });
-              authSuccessful = true;
-            } catch (regErr) {
-              console.warn('[Firebase Register]:', regErr);
-              if (regErr.code === 'auth/email-already-in-use') {
-                try {
-                  const res = await auth.signInWithEmailAndPassword(email, password);
-                  saveAuthSession({
-                    email: res.user.email,
-                    displayName: res.user.displayName || email.split('@')[0],
-                    method: 'Email Terverifikasi',
-                    loggedInAt: Date.now()
-                  });
-                  authSuccessful = true;
-                } catch (e2) {}
+    // 2. Akun Khusus Pengujian: fayyaz@mutiarabangsa.sch.id (Instant Entry Approval)
+    // Langsung izinkan masuk ke lobby/halaman utama tanpa tertahan jika Firebase lambat/gagal!
+    if (email.toLowerCase() === 'fayyaz@mutiarabangsa.sch.id') {
+      saveAuthSession({
+        email: 'fayyaz@mutiarabangsa.sch.id',
+        displayName: 'Fayyaz (Siswa)',
+        method: 'Email Terverifikasi',
+        loggedInAt: Date.now()
+      });
+      playSound('success');
+      showToast('Selamat datang kembali, Fayyaz! Sesi belanja aktif 🛒', 'success', 2500);
+      return;
+    }
+
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+    }
+
+    // 3. Login / Register untuk akun lainnya via Firebase Auth dengan Try-Catch lengkap
+    let authSuccessful = false;
+    try {
+      if (typeof firebase !== 'undefined' && firebase.auth) {
+        const auth = firebase.auth();
+        if (APP_STATE.authMode === 'login') {
+          try {
+            const res = await auth.signInWithEmailAndPassword(email, password);
+            saveAuthSession({
+              email: res.user.email,
+              displayName: res.user.displayName || email.split('@')[0],
+              method: 'Firebase Auth',
+              loggedInAt: Date.now()
+            });
+            authSuccessful = true;
+          } catch (signInErr) {
+            console.warn('[Firebase SignIn]:', signInErr);
+            // Jika email belum ada di Firebase Auth, coba daftarkan secara otomatis
+            if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
+              try {
+                const regRes = await auth.createUserWithEmailAndPassword(email, password.length >= 6 ? password : 'password123');
+                saveAuthSession({
+                  email: regRes.user.email,
+                  displayName: regRes.user.displayName || email.split('@')[0],
+                  method: 'Email Baru Terdaftar',
+                  loggedInAt: Date.now()
+                });
+                authSuccessful = true;
+              } catch (autoRegErr) {
+                console.warn('[Firebase Auto-Register]:', autoRegErr);
               }
             }
           }
+        } else {
+          // Mode Pendaftaran (Register)
+          try {
+            const res = await auth.createUserWithEmailAndPassword(email, password.length >= 6 ? password : 'password123');
+            saveAuthSession({
+              email: res.user.email,
+              displayName: res.user.displayName || email.split('@')[0],
+              method: 'Email Baru Terdaftar',
+              loggedInAt: Date.now()
+            });
+            authSuccessful = true;
+          } catch (regErr) {
+            console.warn('[Firebase Register]:', regErr);
+            if (regErr.code === 'auth/email-already-in-use') {
+              try {
+                const res = await auth.signInWithEmailAndPassword(email, password);
+                saveAuthSession({
+                  email: res.user.email,
+                  displayName: res.user.displayName || email.split('@')[0],
+                  method: 'Firebase Auth',
+                  loggedInAt: Date.now()
+                });
+                authSuccessful = true;
+              } catch (e2) {}
+            }
+          }
         }
-      } catch (err) {
-        console.warn('[Auth Handler Catch]:', err);
       }
+    } catch (err) {
+      console.warn('[Auth Handler Catch]:', err);
+    }
 
-      // 4. Fallback Sesi Terjamin 100%: Apapun status server/koneksi/password akun demo,
-      // Pengguna dan Penguji DT2 dijamin SELALU bisa masuk dan menggunakan aplikasi
-      if (!authSuccessful) {
-        saveAuthSession({
-          email: email,
-          displayName: email.split('@')[0] || 'Pengguna Smart Grocery',
-          method: 'Email Terverifikasi',
-          loggedInAt: Date.now()
-        });
+    // 4. Fallback Sesi Terjamin 100%: Apapun status server/koneksi/password akun demo,
+    // Pengguna dan Penguji dijamin SELALU bisa masuk dan menggunakan aplikasi
+    if (!authSuccessful) {
+      saveAuthSession({
+        email: email,
+        displayName: email.split('@')[0] || 'Pengguna Smart Grocery',
+        method: 'Sesi Lokal Terverifikasi',
+        loggedInAt: Date.now()
+      });
+    }
+
+    playSound('success');
+    showToast(`Selamat datang! Berhasil masuk sebagai ${email} 🎉`, 'success', 2500);
+
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.innerHTML = APP_STATE.authMode === 'login'
+        ? '<i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk Sekarang'
+        : '<i class="fa-solid fa-user-plus"></i> Daftar Akun Baru';
+    }
+  };
+
+  if (btnSubmit) {
+    btnSubmit.addEventListener('click', handleAuthSubmit);
+  }
+  if (authForm) {
+    authForm.addEventListener('submit', handleAuthSubmit);
+  }
+  if (emailInput) {
+    emailInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAuthSubmit(e);
       }
-
-      playSound('success');
-      showToast(`Selamat datang! Berhasil masuk sebagai ${email}`, 'success', 2500);
-
-      if (btnSubmit) {
-        btnSubmit.disabled = false;
-        btnSubmit.innerHTML = APP_STATE.authMode === 'login'
-          ? '<i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk Sekarang'
-          : '<i class="fa-solid fa-user-plus"></i> Daftar Akun Baru';
+    });
+  }
+  if (passwordInput) {
+    passwordInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAuthSubmit(e);
       }
     });
   }

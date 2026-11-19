@@ -120,7 +120,7 @@
           </div>
         </div>
 
-        <button type="submit" id="btnAuthSubmit" class="btn-auth-primary">
+        <button type="button" id="btnAuthSubmit" class="btn-auth-primary" aria-label="Masuk Sekarang">
           <i class="fa-solid fa-arrow-right-to-bracket" id="authSubmitIcon"></i>
           <span id="btnAuthSubmitText">Masuk Sekarang</span>
         </button>
@@ -598,7 +598,7 @@
   <!-- ========================================================
        MODAL: FORM TAMBAH / EDIT BELANJAAN (F-01, F-02, F-03, F-04)
        ======================================================== -->
-  <div id="itemModal" class="modal-overlay" aria-hidden="true">
+  <div id="itemModal" class="modal-overlay" aria-hidden="true" style="display: none;">
     <div class="modal-sheet" role="dialog" aria-labelledby="modalTitle">
       <div class="modal-header">
         <div class="modal-header-icon">
@@ -840,7 +840,7 @@
   <!-- ========================================================
        MODAL: KALKULATOR DISKON CEPAT DI LORONG TOKO (STANDALONE)
        ======================================================== -->
-  <div id="quickCalcModal" class="modal-overlay" aria-hidden="true">
+  <div id="quickCalcModal" class="modal-overlay" aria-hidden="true" style="display: none;">
     <div class="modal-sheet" role="dialog" aria-labelledby="quickCalcTitle">
       <div class="modal-header">
         <div class="modal-header-icon bg-emerald-light">
@@ -919,7 +919,7 @@
   <!-- ========================================================
        MODAL: RIWAYAT KOMPARATOR HARGA TOKO (F-04)
        ======================================================== -->
-  <div id="historyModal" class="modal-overlay" aria-hidden="true">
+  <div id="historyModal" class="modal-overlay" aria-hidden="true" style="display: none;">
     <div class="modal-sheet" role="dialog" aria-labelledby="historyTitle">
       <div class="modal-header">
         <div class="modal-header-icon bg-sky-light">
@@ -950,7 +950,7 @@
   <!-- ========================================================
        MODAL: PENGATURAN & BUDGET SAFETY CAP (F-05)
        ======================================================== -->
-  <div id="settingsModal" class="modal-overlay" aria-hidden="true">
+  <div id="settingsModal" class="modal-overlay" aria-hidden="true" style="display: none;">
     <div class="modal-sheet" role="dialog" aria-labelledby="settingsTitle">
       <div class="modal-header">
         <div class="modal-header-icon bg-amber-light">
@@ -1077,7 +1077,7 @@
   </div>
 
   <!-- Facebook Auth Simulation Modal -->
-  <div id="facebookAuthModal" class="modal-overlay" aria-hidden="true">
+  <div id="facebookAuthModal" class="modal-overlay" aria-hidden="true" style="display: none;">
     <div class="modal-sheet fb-modal-sheet" role="dialog" aria-labelledby="fbModalTitle">
       <div class="fb-modal-header">
         <div class="fb-logo-wrap">
@@ -1115,7 +1115,7 @@
   <div id="confettiContainer" class="confetti-container" aria-hidden="true"></div>
 
   <!-- Modal Konfirmasi Struk Checkout Belanja -->
-  <div id="checkoutReceiptModal" class="modal-overlay" aria-hidden="true">
+  <div id="checkoutReceiptModal" class="modal-overlay" aria-hidden="true" style="display: none;">
     <div class="modal-sheet receipt-modal-sheet" role="dialog" aria-labelledby="receiptModalTitle">
       <div class="receipt-header">
         <div class="receipt-store-logo">
@@ -1171,7 +1171,7 @@
   </div>
 
   <!-- Modal Reward Voucher TikTok (Gamifikasi Saat Barang Dicentang) -->
-  <div id="tiktokRewardModal" class="modal-overlay" aria-hidden="true">
+  <div id="tiktokRewardModal" class="modal-overlay" aria-hidden="true" style="display: none;">
     <div class="modal-sheet tiktok-modal-sheet" role="dialog" aria-labelledby="tiktokRewardTitle">
       <div class="tiktok-reward-header">
         <div class="tiktok-logo-badge">
@@ -1217,7 +1217,7 @@
   </div>
 
   <!-- Modal Koleksi Voucher TikTok Saya -->
-  <div id="vouchersListModal" class="modal-overlay" aria-hidden="true">
+  <div id="vouchersListModal" class="modal-overlay" aria-hidden="true" style="display: none;">
     <div class="modal-sheet" role="dialog" aria-labelledby="vouchersListTitle">
       <div class="modal-header">
         <div class="modal-header-icon bg-rose-light">
@@ -1241,75 +1241,6 @@
 
   <!-- Confetti Container for Gamification Celebrations -->
   <div id="confettiContainer" class="confetti-container" aria-hidden="true"></div>
-
-  <!-- Modal Reward Voucher TikTok (Gamifikasi Saat Barang Dicentang) -->
-  <div id="tiktokRewardModal" class="modal-overlay" aria-hidden="true">
-    <div class="modal-sheet tiktok-modal-sheet" role="dialog" aria-labelledby="tiktokRewardTitle">
-      <div class="tiktok-reward-header">
-        <div class="tiktok-logo-badge">
-          <i class="fa-brands fa-tiktok"></i>
-        </div>
-        <h3 id="tiktokRewardTitle">Selamat! Kamu Dapat Voucher TikTok 🎉</h3>
-        <p id="tiktokRewardDesc" class="tiktok-reward-subtitle">Hadiah belanja cerdas untuk barang yang baru saja kamu beli!</p>
-      </div>
-
-      <div class="tiktok-voucher-ticket">
-        <div class="ticket-notch ticket-notch-left"></div>
-        <div class="ticket-notch ticket-notch-right"></div>
-        <div class="ticket-brand">
-          <span class="platform-tag"><i class="fa-brands fa-tiktok"></i> TikTok Shop Grocery</span>
-          <span class="badge-verified"><i class="fa-solid fa-circle-check"></i> Hadiah Resmi</span>
-        </div>
-        <div class="ticket-content">
-          <h4 id="rewardVoucherDiscount" class="ticket-discount">Diskon Rp 20.000</h4>
-          <span id="rewardVoucherMin" class="ticket-min-spend">Min. Belanja Rp 50.000</span>
-          <p id="rewardVoucherDesc" class="ticket-desc">Spesial Grocery Belanja Hemat Mahasiswa</p>
-        </div>
-        <div class="ticket-dash-divider"></div>
-        <div class="ticket-code-row">
-          <div class="ticket-code-info">
-            <span class="ticket-code-label">KODE VOUCHER TIKTOK:</span>
-            <div id="rewardVoucherCode" class="ticket-code-display">TIKTOKHEMAT20K</div>
-          </div>
-          <button type="button" id="btnCopyRewardCode" class="btn-copy-ticket" title="Salin Kode Voucher">
-            <i class="fa-regular fa-copy"></i> Salin
-          </button>
-        </div>
-      </div>
-
-      <div class="tiktok-reward-footer">
-        <button type="button" id="btnViewAllVouchersFromReward" class="btn-secondary btn-collection-shortcut">
-          <i class="fa-solid fa-ticket"></i> Lihat Koleksi Voucher
-        </button>
-        <button type="button" id="btnCloseTikTokReward" class="btn-primary btn-claim-ok">
-          <i class="fa-solid fa-check"></i> Siap, Lanjut Belanja
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal Koleksi Voucher TikTok Saya -->
-  <div id="vouchersListModal" class="modal-overlay" aria-hidden="true">
-    <div class="modal-sheet" role="dialog" aria-labelledby="vouchersListTitle">
-      <div class="modal-header">
-        <div class="modal-header-icon bg-rose-light">
-          <i class="fa-solid fa-ticket text-rose"></i>
-        </div>
-        <div class="modal-header-title">
-          <h3 id="vouchersListTitle">Koleksi Voucher TikTok Saya</h3>
-          <p>Daftar reward yang berhasil kamu kumpulkan dari belanjaan</p>
-        </div>
-        <button type="button" class="btn-modal-close" id="btnCloseVouchersList" aria-label="Tutup">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-      <div class="settings-modal-body vouchers-modal-body">
-        <div id="vouchersListContainer" class="vouchers-list-container">
-          <!-- Rendered dynamically -->
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
