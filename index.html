@@ -32,8 +32,10 @@
 </head>
 
 <body class="is-unauthenticated">
-  <!-- LAKEY INSPIRED - Chill Day Royalty-Free Lo-Fi Background Audio -->
+  <!-- Kevin MacLeod Royalty-Free Background Audio (Monkeys Spinning Monkeys / Local Forecast Elevator) -->
   <audio id="bgmAudio" loop preload="auto">
+    <source src="https://incompetech.com/music/royalty-free/mp3-royaltyfree/Monkeys%20Spinning%20Monkeys.mp3" type="audio/mpeg">
+    <source src="https://incompetech.com/music/royalty-free/mp3-royaltyfree/Local%20Forecast%20-%20Elevator.mp3" type="audio/mpeg">
     <source src="./assets/audio/chill-day.mp3" type="audio/mpeg">
   </audio>
 
@@ -48,10 +50,10 @@
         <span>Smart Grocery Tracker</span>
       </div>
       <div class="auth-top-actions">
-        <!-- LAKEY INSPIRED Chill Day Music Button -->
-        <button id="btnAuthToggleBgm" class="btn-bgm-pill" title="Musik Latar: Chill Day - LAKEY INSPIRED" aria-label="Toggle Musik">
+        <!-- Kevin MacLeod Music Button -->
+        <button id="btnAuthToggleBgm" class="btn-bgm-pill" title="Musik Latar: Kevin MacLeod" aria-label="Toggle Musik">
           <i class="fa-solid fa-music" id="authBgmIcon"></i>
-          <span id="authBgmText">Play BGM</span>
+          <span id="authBgmText">Play BGM (Kevin MacLeod)</span>
         </button>
         <!-- Theme Toggle Button -->
         <button id="btnAuthToggleTheme" class="icon-btn" title="Ganti Tema Tampilan" aria-label="Ganti Tema">
@@ -65,7 +67,7 @@
       <div class="auth-lock-badge">
         <i class="fa-solid fa-shield-halved"></i>
       </div>
-      <h1 class="auth-headline">Kalau Mau Masuk Wajib Daftar Email dahulu</h1>
+      <h1 class="auth-headline">Kalau Mau Masuk Wajib Daftar Email dahulu 😜</h1>
       <p class="auth-subtext">Daftarkan atau masukkan akun email Anda untuk membuka seluruh fitur sesi belanja, komparator harga, kalkulator diskon, dan sinkronisasi realtime.</p>
     </div>
 
@@ -101,7 +103,7 @@
           </label>
           <div class="auth-input-wrapper">
             <i class="fa-solid fa-at input-icon"></i>
-            <input type="email" id="authEmail" placeholder="contoh: fayyaz@mutiarabangsa.sch.id" autocomplete="email">
+            <input type="email" id="authEmail" value="fayyaz@mutiarabangsa.sch.id" placeholder="fayyaz@mutiarabangsa.sch.id" autocomplete="email">
           </div>
         </div>
 
@@ -111,7 +113,7 @@
           </label>
           <div class="auth-input-wrapper">
             <i class="fa-solid fa-key input-icon"></i>
-            <input type="password" id="authPassword" placeholder="fayyaz123 (atau min. 6 karakter)" autocomplete="current-password">
+            <input type="password" id="authPassword" value="fayyaz123" placeholder="fayyaz123" autocomplete="current-password">
             <button type="button" id="btnTogglePasswordVisibility" class="btn-toggle-eye" aria-label="Lihat kata sandi">
               <i class="fa-solid fa-eye" id="eyeIcon"></i>
             </button>
@@ -230,8 +232,8 @@
       </div>
 
       <div class="header-actions">
-        <!-- LAKEY INSPIRED Chill Day Music Button (Satu-satunya Kontrol Audio di Header) -->
-        <button id="btnToggleBgm" class="icon-btn" title="Putar Musik Latar (Chill Day - LAKEY INSPIRED)" aria-label="Toggle Musik Latar">
+        <!-- Kevin MacLeod Music Button (Satu-satunya Kontrol Audio di Header) -->
+        <button id="btnToggleBgm" class="icon-btn" title="Putar Musik Latar (Kevin MacLeod)" aria-label="Toggle Musik Latar">
           <i class="fa-solid fa-volume-xmark" id="mainBgmIcon"></i>
         </button>
         <!-- TikTok Vouchers Collection Trigger -->

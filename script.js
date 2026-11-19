@@ -20,6 +20,17 @@ const firebaseConfig = {
   measurementId: "G-MYG7Y4B6P1"
 };
 
+// Pre-initialize Firebase App if Compat SDK is loaded
+try {
+  if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+    if (!firebase.apps || firebase.apps.length === 0) {
+      firebase.initializeApp(firebaseConfig);
+    }
+  }
+} catch (e) {
+  console.warn('[Firebase] Pre-init error:', e);
+}
+
 // ========================================================
 // SHARED FIRESTORE SESSION DOCUMENT (HP & PC Realtime Sync)
 // ========================================================
@@ -77,11 +88,11 @@ const STORAGE_KEYS = {
   TRANSACTIONS: 'smart_grocery_checkout_history'
 };
 
-// Konfigurasi Timer Auto-Expire Barang Belum Dibeli (48 Jam & Warning < 3 Jam)
+// Konfigurasi Timer Auto-Expire Barang Belum Dibeli (24 Jam & Warning < 1 Jam / setelah 23 jam)
 const TIMER_CONFIG = {
-  DEFAULT_WAITING_MS: 48 * 60 * 60 * 1000, // 48 Jam (172.800.000 ms / 2880 menit)
-  EXTEND_DURATION_MS: 24 * 60 * 60 * 1000, // Perpanjang +24 Jam (86.400.000 ms)
-  URGENT_THRESHOLD_MS: 3 * 60 * 60 * 1000  // Ambang batas peringatan < 3 Jam (10.800.000 ms)
+  DEFAULT_WAITING_MS: 24 * 60 * 60 * 1000, // 24 Jam (86.400.000 ms)
+  EXTEND_DURATION_MS: 12 * 60 * 60 * 1000, // Perpanjang +12 Jam (43.200.000 ms)
+  URGENT_THRESHOLD_MS: 1 * 60 * 60 * 1000  // Ambang batas peringatan < 1 Jam / setelah 23 jam (3.600.000 ms)
 };
 
 // Helper Format Jam:Menit:Detik (HH:MM:SS) untuk Badge Countdown
@@ -468,118 +479,116 @@ const initSound = () => {
 };
 
 // ========================================================
-// ========================================================
-// LAKEY INSPIRED - CHILL DAY BACKGROUND MUSIC (BGM) CONTROLLER
-// Musik: "Chill Day" karya LAKEY INSPIRED (Lo-Fi Relaxing Chords)
-// Mendukung pemutaran file ./assets/audio/chill-day.mp3
-// Dilengkapi Web Audio API Fallback Synthesizer otomatis jika MP3 lokal belum siap.
+// KEVIN MACLEOD BACKGROUND MUSIC (BGM) CONTROLLER
+// Musik: "Monkeys Spinning Monkeys" / "Local Forecast - Elevator" karya Kevin MacLeod
+// Mendukung pemutaran audio MP3 santai (volume: 0.25, loop: true)
+// Dilengkapi Web Audio API Fallback Synthesizer otomatis jika MP3 offline / terblokir
 // ========================================================
 
-let lofiSynthContext = null;
-let lofiSynthMasterGain = null;
-let lofiSynthTimer = null;
-let lofiFilterNode = null;
-let isLofiSynthRunning = false;
+let macleodSynthContext = null;
+let macleodSynthMasterGain = null;
+let macleodSynthTimer = null;
+let macleodFilterNode = null;
+let isMacleodSynthRunning = false;
 
-// Progresi harmoni lo-fi "Chill Day" (C Major / A Minor: Fmaj7 -> Em7 -> Dm7 -> Cmaj7)
-const CHILL_DAY_CHORDS = [
-  { name: 'Fmaj7', bass: 87.31, notes: [174.61, 220.00, 261.63, 329.63] },
-  { name: 'Em7',   bass: 82.41, notes: [164.81, 196.00, 246.94, 293.66] },
-  { name: 'Dm7',   bass: 73.42, notes: [146.83, 174.61, 220.00, 261.63] },
-  { name: 'Cmaj7', bass: 65.41, notes: [130.81, 164.81, 196.00, 246.94] }
+// Harmoni elevator & marimba santai ala Kevin MacLeod (Cmaj7 -> Am7 -> Dm7 -> G7)
+const MACLEOD_CHORDS = [
+  { name: 'Cmaj7', bass: 65.41, notes: [261.63, 329.63, 392.00, 493.88] },
+  { name: 'Am7',   bass: 55.00, notes: [220.00, 261.63, 329.63, 392.00] },
+  { name: 'Dm7',   bass: 73.42, notes: [293.66, 349.23, 440.00, 523.25] },
+  { name: 'G7',    bass: 49.00, notes: [196.00, 246.94, 293.66, 349.23] }
 ];
 
-let currentChordIdx = 0;
+let currentMacleodIdx = 0;
 
-const startLofiSynthFallback = () => {
-  if (isLofiSynthRunning) return;
+const startMacleodSynthFallback = () => {
+  if (isMacleodSynthRunning) return;
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
-    if (!lofiSynthContext || lofiSynthContext.state === 'closed') {
-      lofiSynthContext = new AudioCtx();
+    if (!macleodSynthContext || macleodSynthContext.state === 'closed') {
+      macleodSynthContext = new AudioCtx();
     }
-    if (lofiSynthContext.state === 'suspended') {
-      lofiSynthContext.resume();
+    if (macleodSynthContext.state === 'suspended') {
+      macleodSynthContext.resume();
     }
 
-    // Master volume lo-fi santai: 0.25
-    lofiSynthMasterGain = lofiSynthContext.createGain();
-    lofiSynthMasterGain.gain.setValueAtTime(0.25, lofiSynthContext.currentTime);
+    // Master volume santai: 0.25
+    macleodSynthMasterGain = macleodSynthContext.createGain();
+    macleodSynthMasterGain.gain.setValueAtTime(0.25, macleodSynthContext.currentTime);
 
-    // Warm Low-Pass Filter (karakter hangat vintage lo-fi ~720Hz)
-    lofiFilterNode = lofiSynthContext.createBiquadFilter();
-    lofiFilterNode.type = 'lowpass';
-    lofiFilterNode.frequency.setValueAtTime(720, lofiSynthContext.currentTime);
-    lofiFilterNode.Q.setValueAtTime(1.1, lofiSynthContext.currentTime);
+    // Warm Low-Pass Filter
+    macleodFilterNode = macleodSynthContext.createBiquadFilter();
+    macleodFilterNode.type = 'lowpass';
+    macleodFilterNode.frequency.setValueAtTime(880, macleodSynthContext.currentTime);
+    macleodFilterNode.Q.setValueAtTime(1.0, macleodSynthContext.currentTime);
 
-    lofiFilterNode.connect(lofiSynthMasterGain);
-    lofiSynthMasterGain.connect(lofiSynthContext.destination);
+    macleodFilterNode.connect(macleodSynthMasterGain);
+    macleodSynthMasterGain.connect(macleodSynthContext.destination);
 
-    isLofiSynthRunning = true;
-    currentChordIdx = 0;
+    isMacleodSynthRunning = true;
+    currentMacleodIdx = 0;
 
-    const playNextChord = () => {
-      if (!isLofiSynthRunning || !lofiSynthContext) return;
-      const ctx = lofiSynthContext;
+    const playNextBar = () => {
+      if (!isMacleodSynthRunning || !macleodSynthContext) return;
+      const ctx = macleodSynthContext;
       const now = ctx.currentTime;
-      const chord = CHILL_DAY_CHORDS[currentChordIdx];
-      const chordDuration = 3.2; // ~75 BPM lo-fi tempo santai
+      const chord = MACLEOD_CHORDS[currentMacleodIdx];
+      const barDuration = 2.4;
 
-      // 1. Bassline lembut (Sine Sub-Bass)
+      // Bassline ringan
       const bassOsc = ctx.createOscillator();
       const bassGain = ctx.createGain();
-      bassOsc.type = 'sine';
+      bassOsc.type = 'triangle';
       bassOsc.frequency.setValueAtTime(chord.bass, now);
       bassGain.gain.setValueAtTime(0.001, now);
-      bassGain.gain.linearRampToValueAtTime(0.16, now + 0.15);
-      bassGain.gain.exponentialRampToValueAtTime(0.001, now + chordDuration - 0.1);
+      bassGain.gain.linearRampToValueAtTime(0.14, now + 0.08);
+      bassGain.gain.exponentialRampToValueAtTime(0.001, now + barDuration - 0.1);
       bassOsc.connect(bassGain);
-      bassGain.connect(lofiFilterNode);
+      bassGain.connect(macleodFilterNode);
       bassOsc.start(now);
-      bassOsc.stop(now + chordDuration);
+      bassOsc.stop(now + barDuration);
 
-      // 2. Chord Lo-Fi Electric Piano (Triangle & Sine dengan analog detune)
+      // Petikan marimba ceria
       chord.notes.forEach((freq, i) => {
         const osc = ctx.createOscillator();
         const oscGain = ctx.createGain();
-        osc.type = (i % 2 === 0) ? 'triangle' : 'sine';
-        osc.detune.setValueAtTime((i - 1.5) * 4, now);
+        osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, now);
 
-        const noteDelay = i * 0.035; // Strum petikan alami
+        const noteDelay = i * 0.12;
         const startTime = now + noteDelay;
         oscGain.gain.setValueAtTime(0.001, startTime);
-        oscGain.gain.linearRampToValueAtTime(0.065, startTime + 0.12);
-        oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + (chordDuration - noteDelay - 0.15));
+        oscGain.gain.linearRampToValueAtTime(0.08, startTime + 0.04);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.45);
 
         osc.connect(oscGain);
-        oscGain.connect(lofiFilterNode);
+        oscGain.connect(macleodFilterNode);
         osc.start(startTime);
-        osc.stop(now + chordDuration);
+        osc.stop(startTime + 0.5);
       });
 
-      currentChordIdx = (currentChordIdx + 1) % CHILL_DAY_CHORDS.length;
+      currentMacleodIdx = (currentMacleodIdx + 1) % MACLEOD_CHORDS.length;
     };
 
-    playNextChord();
-    lofiSynthTimer = setInterval(playNextChord, 3200);
-    console.log('[BGM] Web Audio API Fallback Synthesizer "Chill Day - LAKEY INSPIRED" aktif (Volume: 0.25).');
+    playNextBar();
+    macleodSynthTimer = setInterval(playNextBar, 2400);
+    console.log('[BGM] Web Audio API Fallback Synthesizer Kevin MacLeod aktif (Volume: 0.25).');
   } catch (err) {
-    console.warn('[BGM] Tidak dapat menginisialisasi Web Audio lo-fi fallback:', err);
+    console.warn('[BGM] Web Audio fallback error:', err);
   }
 };
 
-const stopLofiSynthFallback = () => {
-  isLofiSynthRunning = false;
-  if (lofiSynthTimer) {
-    clearInterval(lofiSynthTimer);
-    lofiSynthTimer = null;
+const stopMacleodSynthFallback = () => {
+  isMacleodSynthRunning = false;
+  if (macleodSynthTimer) {
+    clearInterval(macleodSynthTimer);
+    macleodSynthTimer = null;
   }
-  if (lofiSynthMasterGain && lofiSynthContext) {
+  if (macleodSynthMasterGain && macleodSynthContext) {
     try {
-      lofiSynthMasterGain.gain.setValueAtTime(lofiSynthMasterGain.gain.value, lofiSynthContext.currentTime);
-      lofiSynthMasterGain.gain.linearRampToValueAtTime(0.001, lofiSynthContext.currentTime + 0.1);
+      macleodSynthMasterGain.gain.setValueAtTime(macleodSynthMasterGain.gain.value, macleodSynthContext.currentTime);
+      macleodSynthMasterGain.gain.linearRampToValueAtTime(0.001, macleodSynthContext.currentTime + 0.1);
     } catch(e) {}
   }
 };
@@ -594,10 +603,10 @@ const updateBgmUI = (isPlaying) => {
 
   if (authBgmBtn) {
     authBgmBtn.classList.toggle('is-playing', isPlaying);
-    authBgmBtn.title = isPlaying ? 'Jeda Musik Latar (Chill Day - LAKEY INSPIRED)' : 'Putar Musik Latar (Chill Day - LAKEY INSPIRED)';
+    authBgmBtn.title = isPlaying ? 'Jeda Musik Latar (Kevin MacLeod)' : 'Putar Musik Latar (Kevin MacLeod)';
   }
   if (authBgmText) {
-    authBgmText.textContent = isPlaying ? 'Jeda BGM' : 'Play BGM';
+    authBgmText.textContent = isPlaying ? 'Jeda BGM' : 'Play BGM (Kevin MacLeod)';
   }
   if (authBgmIcon) {
     authBgmIcon.className = isPlaying ? 'fa-solid fa-volume-high' : 'fa-solid fa-music';
@@ -605,7 +614,7 @@ const updateBgmUI = (isPlaying) => {
 
   if (mainBgmBtn) {
     mainBgmBtn.classList.toggle('active', isPlaying);
-    mainBgmBtn.title = isPlaying ? 'Jeda Musik Latar (Chill Day - LAKEY INSPIRED)' : 'Putar Musik Latar (Chill Day - LAKEY INSPIRED)';
+    mainBgmBtn.title = isPlaying ? 'Jeda Musik Latar (Kevin MacLeod)' : 'Putar Musik Latar (Kevin MacLeod)';
   }
   if (mainBgmIcon) {
     mainBgmIcon.className = isPlaying ? 'fa-solid fa-music' : 'fa-solid fa-volume-xmark';
@@ -618,23 +627,22 @@ const playBgm = async () => {
   try { localStorage.setItem(STORAGE_KEYS.BGM_ENABLED, 'true'); } catch(e) {}
 
   if (!audio) {
-    startLofiSynthFallback();
+    startMacleodSynthFallback();
     return;
   }
 
-  audio.volume = 0.25; // Volume lo-fi santai 0.25
+  audio.volume = 0.25; // Volume santai Kevin MacLeod 0.25
   audio.loop = true;
 
   try {
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       await playPromise;
-      // Jika MP3 audio berhasil berputar, hentikan synth fallback
-      stopLofiSynthFallback();
+      stopMacleodSynthFallback();
     }
   } catch (err) {
-    console.info('[BGM] MP3 audio play gagal/belum siap, mengaktifkan Web Audio Lo-Fi Fallback "Chill Day":', err.message);
-    startLofiSynthFallback();
+    console.info('[BGM] MP3 audio play gagal/belum siap, mengaktifkan Web Audio Fallback Kevin MacLeod:', err.message);
+    startMacleodSynthFallback();
   }
 };
 
@@ -643,21 +651,21 @@ const pauseBgm = () => {
   if (audio) {
     try { audio.pause(); } catch(e) {}
   }
-  stopLofiSynthFallback();
+  stopMacleodSynthFallback();
   updateBgmUI(false);
   try { localStorage.setItem(STORAGE_KEYS.BGM_ENABLED, 'false'); } catch(e) {}
 };
 
 const toggleBgm = () => {
   const audio = document.getElementById('bgmAudio');
-  const isPlaying = APP_STATE.bgmPlaying || (audio && !audio.paused) || isLofiSynthRunning;
+  const isPlaying = APP_STATE.bgmPlaying || (audio && !audio.paused) || isMacleodSynthRunning;
 
   if (isPlaying) {
     pauseBgm();
     showToast('Musik latar dijeda ⏸️', 'warning', 1500);
   } else {
     playBgm();
-    showToast('Musik latar: Chill Day - LAKEY INSPIRED diputar 🎵', 'success', 2200);
+    showToast('Musik latar santai Kevin MacLeod diputar 🎵', 'success', 2200);
   }
 };
 
@@ -1474,8 +1482,8 @@ const renderGroceryList = () => {
                   <i class="fa-solid fa-stopwatch ${isUrgent ? 'fa-beat' : ''}"></i>
                   <span id="timer-display-${item.id}">${formattedCountdown}</span>
                 </span>
-                <button type="button" class="btn-extend-countdown" data-action="extend-timer" data-id="${item.id}" title="Perpanjang batas waktu tunggu +24 jam">
-                  <i class="fa-solid fa-clock-rotate-left"></i> +24j
+                <button type="button" class="btn-extend-countdown" data-action="extend-timer" data-id="${item.id}" title="Perpanjang batas waktu tunggu +12 jam">
+                  <i class="fa-solid fa-clock-rotate-left"></i> +12j
                 </button>
               </div>
             ` : `
@@ -2416,20 +2424,18 @@ const setupAuthEventListeners = () => {
 
       // 2. Akun Khusus Pengujian: fayyaz@mutiarabangsa.sch.id (Instant Demo Approval)
       if (email.toLowerCase() === 'fayyaz@mutiarabangsa.sch.id') {
-        setTimeout(() => {
-          saveAuthSession({
-            email: 'fayyaz@mutiarabangsa.sch.id',
-            displayName: 'Fayyaz (Siswa)',
-            method: 'Email Terverifikasi',
-            loggedInAt: Date.now()
-          });
-          playSound('success');
-          showToast('Selamat datang kembali, Fayyaz! Sesi belanja aktif.', 'success', 3000);
-          if (btnSubmit) {
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk Sekarang';
-          }
-        }, 300);
+        saveAuthSession({
+          email: 'fayyaz@mutiarabangsa.sch.id',
+          displayName: 'Fayyaz (Siswa)',
+          method: 'Email Terverifikasi',
+          loggedInAt: Date.now()
+        });
+        playSound('success');
+        showToast('Selamat datang kembali, Fayyaz! Sesi belanja aktif 🛒', 'success', 3000);
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk Sekarang';
+        }
         return;
       }
 
@@ -3454,7 +3460,7 @@ const extendItemCountdown = async (itemId) => {
   await syncSessionToFirestore();
 
   playSound('success');
-  showToast(`Waktu tunggu "${item.name}" berhasil diperpanjang +24 jam! ⏳`, 'success', 2500);
+  showToast(`Waktu tunggu "${item.name}" berhasil diperpanjang +12 jam! ⏳`, 'success', 2500);
 };
 
 const handleItemAutoExpired = async (item) => {
@@ -3468,7 +3474,7 @@ const handleItemAutoExpired = async (item) => {
   await syncSessionToFirestore();
 
   playSound('delete');
-  showToast(`⚠️ Peringatan: Barang "${item.name}" telah kedaluwarsa (48 jam) dan otomatis dihapus dari daftar tunggu.`, 'danger', 4500);
+  showToast(`⚠️ Peringatan: Waktu tunggu "${item.name}" telah habis (24 jam) dan otomatis dihapus dari daftar tunggu.`, 'danger', 4500);
 };
 
 let _countdownInterval = null;
@@ -3493,12 +3499,12 @@ const startCountdownTimer = () => {
         return;
       }
 
-      // 2. Warning jika < 3 jam (10.800.000 ms)
+      // 2. Warning jika waktu tunggu tersisa < 1 jam (setelah 23 jam)
       if (remainingMs <= TIMER_CONFIG.URGENT_THRESHOLD_MS) {
         if (!APP_STATE.warnedItems.has(item.id)) {
           APP_STATE.warnedItems.add(item.id);
           playSound('warning');
-          showToast(`⚠️ Peringatan! Barang "${item.name}" akan segera menghilang dari daftar tunggu (< 3 jam). Segera beli atau perpanjang waktu!`, 'warning', 5000);
+          showToast(`⚠️ Peringatan! Waktu tunggu "${item.name}" tersisa kurang dari 1 jam dan akan segera menghilang dari daftar tunggu!`, 'warning', 5000);
         }
       }
 
@@ -4045,52 +4051,54 @@ const registerServiceWorker = () => {
 // ========================================================
 const startApp = () => {
   // 1. Inisialisasi referensi elemen DOM
-  initDom();
+  try { initDom(); } catch(e) { console.warn('[Init] initDom error:', e); }
 
-  // 2. Inisialisasi tema, audio sound effects & musik latar Chill Day (LAKEY INSPIRED)
-  initTheme();
-  initSound();
-  initBgm();
+  // 2. Pasang SEMUA event listener tombol & form autentikasi lebih awal
+  try { setupEventListeners(); } catch(e) { console.warn('[Init] setupEventListeners error:', e); }
 
-  // 2b. Inisialisasi status autentikasi pengguna (Auth Guard)
-  checkAuthSession();
+  // 3. Inisialisasi tema, audio sound effects & musik latar Kevin MacLeod
+  try { initTheme(); } catch(e) {}
+  try { initSound(); } catch(e) {}
+  try { initBgm(); } catch(e) {}
 
-  // 2c. Inisialisasi gamifikasi: Muat koleksi voucher TikTok & aktifkan countdown timer
-  loadVouchersFromStorage();
-  startCountdownTimer();
+  // 4. Inisialisasi status autentikasi pengguna (Auth Guard)
+  try { checkAuthSession(); } catch(e) {}
 
-  // 2d. Inisialisasi Riwayat Transaksi Checkout & Tab Sistem
-  loadHistoryFromStorage();
-  renderHistoryList();
-  switchTab('belanja');
+  // 5. Inisialisasi gamifikasi: Muat koleksi voucher TikTok & aktifkan countdown timer (24 Jam)
+  try { loadVouchersFromStorage(); } catch(e) {}
+  try { startCountdownTimer(); } catch(e) {}
 
-  // 3. Muat lokasi kustom & perbarui dropdown serta quick chips
-  loadCustomLocations();
-  refreshLocationDropdown();
-  refreshStoreChips();
+  // 6. Inisialisasi Riwayat Transaksi Checkout & Tab Sistem
+  try { loadHistoryFromStorage(); } catch(e) {}
+  try { renderHistoryList(); } catch(e) {}
+  try { switchTab('belanja'); } catch(e) {}
 
-  // 4. Muat cache LocalStorage untuk tampilan instan tanpa lag saat ditekan F5
-  loadItemsFromLocalStorage();
+  // 7. Muat lokasi kustom & perbarui dropdown serta quick chips
+  try { loadCustomLocations(); } catch(e) {}
+  try { refreshLocationDropdown(); } catch(e) {}
+  try { refreshStoreChips(); } catch(e) {}
 
-  // 5. Pasang SEMUA event listener tombol
-  setupEventListeners();
+  // 8. Muat cache LocalStorage untuk tampilan instan tanpa lag saat ditekan F5
+  try { loadItemsFromLocalStorage(); } catch(e) {}
 
-  // 6. Update tampilan sesi header aktif & input pengaturan
+  // 9. Update tampilan sesi header aktif & input pengaturan
   if (dom.headerStoreLocation) dom.headerStoreLocation.value = APP_STATE.sessionStore;
   if (dom.headerShoppingDate) dom.headerShoppingDate.value = APP_STATE.sessionDate;
   if (dom.inputBudgetCapSetting) dom.inputBudgetCapSetting.value = APP_STATE.budgetCap;
   if (dom.sessionStoreBadge) dom.sessionStoreBadge.textContent = APP_STATE.sessionStore.replace('Grocery - ', '');
 
-  // 7. Update data list, kalkulasi anggaran dan render daftar belanja
-  updatePriceHistoryMap(APP_STATE.items);
-  updateBudgetSafetyDisplay();
-  renderGroceryList();
+  // 10. Update data list, kalkulasi anggaran dan render daftar belanja
+  try {
+    updatePriceHistoryMap(APP_STATE.items);
+    updateBudgetSafetyDisplay();
+    renderGroceryList();
+  } catch(e) { console.warn('[Init] render list error:', e); }
 
-  // 8. Daftarkan Service Worker PWA jika didukung protokol
-  registerServiceWorker();
+  // 11. Daftarkan Service Worker PWA jika didukung protokol
+  try { registerServiceWorker(); } catch(e) {}
 
-  // 9. Hubungkan ke Cloud Firestore Realtime (Compat) & Sinkronisasi metadata
-  initFirebaseRealtime();
+  // 12. Hubungkan ke Cloud Firestore Realtime (Compat) & Sinkronisasi metadata
+  try { initFirebaseRealtime(); } catch(e) { console.warn('[Init] initFirebaseRealtime error:', e); }
 };
 
 // Jalankan aplikasi begitu dokumen siap
