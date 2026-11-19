@@ -929,6 +929,54 @@ const showToast = (message, type = 'success', duration = 3000) => {
   }, duration);
 };
 
+// Toast Notifikasi Hapus Item dengan Tombol "Urungkan (Undo)" 4 Detik
+const showUndoToast = (message, onUndo, duration = 4000) => {
+  if (!dom.toastContainer) return;
+
+  const toast = document.createElement('div');
+  toast.className = 'toast toast-danger';
+
+  toast.innerHTML = `
+    <div class="toast-content-wrapper">
+      <i class="fa-solid fa-trash-can"></i>
+      <span>${escapeHtml(message)}</span>
+    </div>
+    <button type="button" class="btn-toast-undo" aria-label="Urungkan penghapusan">
+      <i class="fa-solid fa-rotate-left"></i> Urungkan
+    </button>
+  `;
+
+  const undoBtn = toast.querySelector('.btn-toast-undo');
+  let isUndone = false;
+
+  const dismissToast = () => {
+    toast.style.animation = 'toast-out 0.25s forwards';
+    setTimeout(() => {
+      try { toast.remove(); } catch(e) {}
+    }, 250);
+  };
+
+  const timer = setTimeout(() => {
+    if (!isUndone) {
+      dismissToast();
+    }
+  }, duration);
+
+  if (undoBtn) {
+    undoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isUndone = true;
+      clearTimeout(timer);
+      dismissToast();
+      if (typeof onUndo === 'function') {
+        onUndo();
+      }
+    });
+  }
+
+  dom.toastContainer.appendChild(toast);
+};
+
 // ========================================================
 // 4. F-03: TIERED DISCOUNT CALCULATOR (Diskon Bertingkat)
 // ========================================================
@@ -1605,20 +1653,57 @@ const saveItem = async (itemData) => {
 };
 
 /**
- * Delete Item
+ * Delete Item (Optimistic UI Update + Undo 4 Detik + Cloud Firestore deleteDoc)
  */
 const deleteItem = async (itemId) => {
-  playSound('delete');
-  APP_STATE.items = APP_STATE.items.filter(i => i.id !== itemId);
+  const itemIndex = APP_STATE.items.findIndex(i => i.id === itemId);
+  if (itemIndex === -1) return;
+
+  const deletedItem = APP_STATE.items[itemIndex];
+
+  // 1. Optimistic UI: Langsung hapus dari state lokal & storage seketika
+  APP_STATE.items.splice(itemIndex, 1);
   APP_STATE.warnedItems.delete(itemId);
   saveItemsLocally();
   updatePriceHistoryMap(APP_STATE.items);
   updateBudgetSafetyDisplay();
   renderGroceryList();
-  showToast('Barang berhasil dihapus!', 'success');
+  playSound('delete');
 
-  // Kirim pembaruan ke Firestore sessions/rian_main_session
-  await syncSessionToFirestore();
+  // 2. Tampilkan toast notifikasi dengan tombol "Urungkan (Undo)" selama 4 detik
+  showUndoToast(`Barang "${deletedItem.name}" dihapus`, async () => {
+    // Aksi Undo: Kembalikan item ke posisi semula di keranjang
+    APP_STATE.items.splice(itemIndex, 0, deletedItem);
+    saveItemsLocally();
+    updatePriceHistoryMap(APP_STATE.items);
+    updateBudgetSafetyDisplay();
+    renderGroceryList();
+    playSound('success');
+    showToast(`Barang "${deletedItem.name}" berhasil dipulihkan!`, 'success', 2500);
+
+    // Sinkronisasi pemulihan kembali ke Cloud Firestore
+    await syncSessionToFirestore();
+  }, 4000);
+
+  // 3. Hapus dokumen di Cloud Firestore (dengan penanganan error aman)
+  try {
+    if (db) {
+      // Coba hapus dokumen spesifik dari koleksi individual jika ada
+      const targetCollections = ['grocery_items', 'items', 'groceryItems'];
+      for (const col of targetCollections) {
+        try {
+          await db.collection(col).doc(itemId).delete();
+        } catch(docErr) {
+          // Tangani jika dokumen tidak ada / sudah terhapus
+          console.info(`[Firestore deleteDoc] Info koleksi ${col}:`, docErr.message || docErr);
+        }
+      }
+    }
+    // Update dokumen sesi Firestore bersama sessions/rian_main_session
+    await syncSessionToFirestore();
+  } catch (err) {
+    console.warn('[Firestore] Error saat menghapus item dari server:', err);
+  }
 };
 
 /**
@@ -2931,6 +3016,7 @@ const setupEventListeners = () => {
     dom.groceryList.addEventListener('click', async (e) => {
       const actionEl = e.target.closest('[data-action]');
       if (!actionEl) return;
+      e.stopPropagation();
 
       const action = actionEl.dataset.action;
       const itemId = actionEl.dataset.id;
@@ -2939,10 +3025,8 @@ const setupEventListeners = () => {
         playSound('success');
         await toggleBoughtStatus(itemId);
       } else if (action === 'delete') {
-        if (confirm('Hapus barang ini dari daftar belanja?')) {
-          playSound('delete');
-          await deleteItem(itemId);
-        }
+        e.stopPropagation();
+        await deleteItem(itemId);
       } else if (action === 'edit') {
         const item = APP_STATE.items.find(i => i.id === itemId);
         if (item) {
