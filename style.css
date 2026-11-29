@@ -245,6 +245,26 @@ body::before {
   transform: translateY(-1px);
 }
 
+/* Kevin MacLeod BGM Header Button */
+#btnToggleBgm {
+  position: relative;
+  transition: all var(--transition-fast);
+}
+
+#btnToggleBgm.active {
+  color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3) !important;
+}
+
+[data-theme="light"] #btnToggleBgm.active {
+  color: #059669 !important;
+  background: rgba(5, 150, 105, 0.16) !important;
+  border-color: rgba(5, 150, 105, 0.45) !important;
+  box-shadow: 0 0 10px rgba(5, 150, 105, 0.25) !important;
+}
+
 /* ========================================================
    HEADER SESI BELANJA (LOKASI & TANGGAL TRANSAKSI)
    ======================================================== */
@@ -706,12 +726,14 @@ body::before {
   pointer-events: none;
 }
 
+#searchInput,
 .search-box input {
   width: 100%;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 10px 38px 10px 38px;
+  padding: 10px 38px 10px 38px !important;
+  padding-left: 38px !important;
   color: var(--text-main);
   font-size: 0.85rem;
   font-family: inherit;

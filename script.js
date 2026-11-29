@@ -407,10 +407,10 @@ const updateBgmUI = (isPlaying) => {
 
   if (mainBgmBtn) {
     mainBgmBtn.classList.toggle('active', isPlaying);
-    mainBgmBtn.title = isPlaying ? 'Jeda Musik Latar (Kevin MacLeod)' : 'Putar Musik Latar (Kevin MacLeod)';
+    mainBgmBtn.title = isPlaying ? 'Jeda Musik Latar Kevin MacLeod (Aktif)' : 'Putar Musik Latar Kevin MacLeod (Mute)';
   }
   if (mainBgmIcon) {
-    mainBgmIcon.className = isPlaying ? 'fa-solid fa-volume-high' : 'fa-solid fa-music';
+    mainBgmIcon.className = isPlaying ? 'fa-solid fa-music' : 'fa-solid fa-volume-xmark';
   }
 };
 
