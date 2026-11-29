@@ -54,6 +54,14 @@
       </div>
 
       <div class="header-actions">
+        <!-- Sound Toggle Button -->
+        <button id="btnToggleSound" class="icon-btn" title="Efek Suara Aktif" aria-label="Toggle Suara">
+          <i class="fa-solid fa-volume-high" id="soundIcon"></i>
+        </button>
+        <!-- Theme Toggle Button -->
+        <button id="btnToggleTheme" class="icon-btn" title="Ganti Tema Tampilan" aria-label="Ganti Tema">
+          <i class="fa-solid fa-moon" id="themeIcon"></i>
+        </button>
         <!-- Quick Discount Calc Trigger -->
         <button id="btnOpenQuickCalc" class="icon-btn" title="Kalkulator Diskon Cepat" aria-label="Kalkulator Diskon">
           <i class="fa-solid fa-percent"></i>
@@ -94,8 +102,19 @@
               <option value="Pasar Modern">Pasar Modern</option>
               <option value="Hypermart">Hypermart</option>
               <option value="Transmart">Transmart</option>
+              <option value="__custom__">+ Tambah Lokasi Kustom...</option>
             </select>
             <i class="fa-solid fa-chevron-down select-arrow"></i>
+          </div>
+          <!-- Custom Location Input (shown when "+ Tambah Lokasi Kustom..." is selected) -->
+          <div id="customLocationInputWrapper" class="custom-location-input-wrapper" style="display:none;">
+            <input type="text" id="customLocationInput" placeholder="Contoh: AEON Mall BSD, Toko Pak Budi..." autocomplete="off">
+            <button type="button" id="btnSaveCustomLocation" class="btn-save-custom-loc">
+              <i class="fa-solid fa-check"></i> Simpan Lokasi
+            </button>
+            <button type="button" id="btnCancelCustomLocation" class="btn-cancel-custom-loc" title="Batal">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </div>
         </div>
 
@@ -104,7 +123,12 @@
           <label for="headerShoppingDate">
             <i class="fa-solid fa-calendar-day"></i> Tanggal Transaksi
           </label>
-          <input type="date" id="headerShoppingDate" class="session-date-input">
+          <div class="date-input-wrapper">
+            <input type="date" id="headerShoppingDate" class="session-date-input">
+            <button type="button" class="btn-cal-trigger" id="btnCalTrigger" title="Buka kalender">
+              <i class="fa-solid fa-calendar-days"></i>
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -304,7 +328,12 @@
             <label for="inputShoppingDate">
               <i class="fa-solid fa-calendar-day"></i> Tanggal <span class="required">*</span>
             </label>
-            <input type="date" id="inputShoppingDate" required>
+            <div class="date-input-wrapper">
+              <input type="date" id="inputShoppingDate" required>
+              <button type="button" class="btn-cal-trigger" id="btnModalCalTrigger" title="Buka kalender">
+                <i class="fa-solid fa-calendar-days"></i>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -603,6 +632,31 @@
       </div>
 
       <div class="settings-modal-body">
+        <!-- Theme Settings -->
+        <div class="settings-card">
+          <strong>Tema Tampilan</strong>
+          <p class="setting-desc">Pilih tema visual aplikasi.</p>
+          <div class="theme-toggle-group">
+            <button id="btnThemeDark" class="btn-theme-opt active" data-theme="dark">
+              <i class="fa-solid fa-moon"></i> Gelap / Hitam
+            </button>
+            <button id="btnThemeLight" class="btn-theme-opt" data-theme="light">
+              <i class="fa-solid fa-sun"></i> Terang / Putih
+            </button>
+          </div>
+        </div>
+
+        <!-- Sound Settings -->
+        <div class="settings-card">
+          <strong>Efek Suara Interaktif</strong>
+          <p class="setting-desc">Aktifkan atau nonaktifkan efek suara saat mengklik tombol.</p>
+          <label class="toggle-switch-label">
+            <input type="checkbox" id="soundToggleCheckbox" checked>
+            <span class="toggle-switch-track"></span>
+            <span class="toggle-switch-text">Efek Suara Aktif</span>
+          </label>
+        </div>
+
         <!-- Safety Cap Budget Form -->
         <div class="settings-card">
           <label for="inputBudgetCapSetting">

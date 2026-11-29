@@ -58,7 +58,10 @@ const STORAGE_KEYS = {
   STORE_LOCATION: 'smart_grocery_store_location',
   SHOPPING_DATE: 'smart_grocery_shopping_date',
   SESSION_STORE: 'smart_grocery_session_store',
-  SESSION_DATE: 'smart_grocery_session_date'
+  SESSION_DATE: 'smart_grocery_session_date',
+  THEME: 'smart_grocery_theme',
+  SOUND: 'smart_grocery_sound_enabled',
+  CUSTOM_LOCATIONS: 'smart_grocery_custom_locations'
 };
 
 // Global App State
@@ -73,7 +76,10 @@ const APP_STATE = {
   sortBy: 'newest',
   priceHistory: {}, // { "itemNameLowercase": [ { id, store, price, shoppingDate, timestamp } ] }
   sessionStore: 'Lotte Mart Grocery - Puri Indah', // Default SRS Rian
-  sessionDate: getTodayDateString() // Default hari ini
+  sessionDate: getTodayDateString(), // Default hari ini
+  theme: 'dark',
+  soundEnabled: true,
+  customLocations: []
 };
 
 // Firebase References
@@ -95,6 +101,21 @@ const initDom = () => {
     headerStoreLocation: document.getElementById('headerStoreLocation'),
     headerShoppingDate: document.getElementById('headerShoppingDate'),
     sessionStoreBadge: document.getElementById('sessionStoreBadge'),
+    customLocationInputWrapper: document.getElementById('customLocationInputWrapper'),
+    customLocationInput: document.getElementById('customLocationInput'),
+    btnSaveCustomLocation: document.getElementById('btnSaveCustomLocation'),
+    btnCancelCustomLocation: document.getElementById('btnCancelCustomLocation'),
+    btnCalTrigger: document.getElementById('btnCalTrigger'),
+    btnModalCalTrigger: document.getElementById('btnModalCalTrigger'),
+
+    // Theme & Sound Controls
+    btnToggleTheme: document.getElementById('btnToggleTheme'),
+    themeIcon: document.getElementById('themeIcon'),
+    btnThemeDark: document.getElementById('btnThemeDark'),
+    btnThemeLight: document.getElementById('btnThemeLight'),
+    btnToggleSound: document.getElementById('btnToggleSound'),
+    soundIcon: document.getElementById('soundIcon'),
+    soundToggleCheckbox: document.getElementById('soundToggleCheckbox'),
     
     // Safety Cap Card (F-05)
     safetyCapSection: document.getElementById('safetyCapSection'),
@@ -215,6 +236,271 @@ const initDom = () => {
 const formatRupiah = (number) => {
   const num = Math.round(Number(number) || 0);
   return 'Rp ' + num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
+// ========================================================
+// WEB AUDIO API - Sound Effects (No external files needed)
+// ========================================================
+let _audioCtx = null;
+const getAudioCtx = () => {
+  if (!_audioCtx) {
+    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  }
+  return _audioCtx;
+};
+
+const playSound = (type) => {
+  if (!APP_STATE.soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+
+  if (type === 'click') {
+    // Soft pop / click - for navigation, chips, qty buttons
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, now);
+    osc.frequency.exponentialRampToValueAtTime(300, now + 0.08);
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    osc.start(now); osc.stop(now + 0.1);
+
+  } else if (type === 'success') {
+    // Chime / success - ascending two notes
+    [520, 780].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + i * 0.12);
+      gain.gain.setValueAtTime(0.18, now + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.18);
+      osc.start(now + i * 0.12); osc.stop(now + i * 0.12 + 0.2);
+    });
+
+  } else if (type === 'delete') {
+    // Swoosh delete sound
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(400, now);
+    osc.frequency.exponentialRampToValueAtTime(100, now + 0.2);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+    osc.start(now); osc.stop(now + 0.22);
+
+  } else if (type === 'warning') {
+    // Warning beep
+    [440, 440].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, now + i * 0.18);
+      gain.gain.setValueAtTime(0.08, now + i * 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.14);
+      osc.start(now + i * 0.18); osc.stop(now + i * 0.18 + 0.15);
+    });
+  }
+};
+
+// ========================================================
+// THEME & SOUND MANAGERS
+// ========================================================
+const applyTheme = (theme) => {
+  APP_STATE.theme = theme;
+  document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : 'dark');
+  
+  const themeIcon = document.getElementById('themeIcon');
+  if (themeIcon) {
+    themeIcon.className = theme === 'light' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+  }
+  
+  const btnDark = document.getElementById('btnThemeDark');
+  const btnLight = document.getElementById('btnThemeLight');
+  if (btnDark && btnLight) {
+    btnDark.classList.toggle('active', theme === 'dark');
+    btnLight.classList.toggle('active', theme === 'light');
+  }
+  
+  try { localStorage.setItem(STORAGE_KEYS.THEME, theme); } catch(e) {}
+};
+
+const initTheme = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.THEME) || 'dark';
+    applyTheme(saved);
+  } catch(e) {
+    applyTheme('dark');
+  }
+};
+
+const applySoundState = (enabled) => {
+  APP_STATE.soundEnabled = enabled;
+  const soundIcon = document.getElementById('soundIcon');
+  if (soundIcon) {
+    soundIcon.className = enabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+  }
+  const btnToggle = document.getElementById('btnToggleSound');
+  if (btnToggle) {
+    btnToggle.title = enabled ? 'Efek Suara Aktif (Klik untuk Mute)' : 'Efek Suara Dimatikan (Klik untuk Aktifkan)';
+  }
+  const chk = document.getElementById('soundToggleCheckbox');
+  if (chk) {
+    chk.checked = enabled;
+  }
+  try { localStorage.setItem(STORAGE_KEYS.SOUND, enabled ? 'true' : 'false'); } catch(e) {}
+};
+
+const initSound = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.SOUND);
+    const isEnabled = saved !== 'false';
+    applySoundState(isEnabled);
+  } catch(e) {
+    applySoundState(true);
+  }
+};
+
+// ========================================================
+// CUSTOM LOCATIONS MANAGER
+// ========================================================
+const loadCustomLocations = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.CUSTOM_LOCATIONS);
+    if (raw) APP_STATE.customLocations = JSON.parse(raw);
+  } catch(e) {}
+};
+
+const saveCustomLocations = () => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.CUSTOM_LOCATIONS, JSON.stringify(APP_STATE.customLocations));
+  } catch(e) {}
+};
+
+const addCustomLocation = (locationName) => {
+  if (!locationName || !locationName.trim()) return;
+  const name = locationName.trim();
+  
+  if (APP_STATE.customLocations.includes(name)) {
+    showToast(`Lokasi "${name}" sudah ada di daftar!`, 'warning');
+    // Still select it
+    APP_STATE.sessionStore = name;
+    if (dom.headerStoreLocation) dom.headerStoreLocation.value = name;
+    const wrapper = document.getElementById('customLocationInputWrapper');
+    if (wrapper) wrapper.style.display = 'none';
+    return;
+  }
+  
+  APP_STATE.customLocations.push(name);
+  saveCustomLocations();
+  refreshLocationDropdown();
+  refreshStoreChips();
+  
+  // Set as active session store
+  APP_STATE.sessionStore = name;
+  try {
+    localStorage.setItem(STORAGE_KEYS.STORE_LOCATION, name);
+    localStorage.setItem(STORAGE_KEYS.SESSION_STORE, name);
+  } catch(e) {}
+  if (dom.headerStoreLocation) dom.headerStoreLocation.value = name;
+  if (dom.sessionStoreBadge) dom.sessionStoreBadge.textContent = name.length > 20 ? name.substring(0,20) + '...' : name;
+  
+  // Hide custom input wrapper and clear text
+  const wrapper = document.getElementById('customLocationInputWrapper');
+  const input = document.getElementById('customLocationInput');
+  if (wrapper) wrapper.style.display = 'none';
+  if (input) input.value = '';
+
+  // Sync to Firestore (both activeSession and appConfig)
+  syncConfigToFirestore({
+    activeLocation: name,
+    storeLocation: name,
+    customLocations: APP_STATE.customLocations
+  });
+  playSound('success');
+  showToast(`Lokasi "${name}" berhasil ditambahkan & dijadikan sesi aktif!`, 'success');
+};
+
+const refreshLocationDropdown = () => {
+  const select = document.getElementById('headerStoreLocation');
+  if (!select) return;
+  
+  const defaultOptions = [
+    'Lotte Mart Grocery - Puri Indah',
+    'Superindo', 'Indomaret', 'Alfamart',
+    'Pasar Modern', 'Hypermart', 'Transmart'
+  ];
+  
+  // Remove old custom options (before the __custom__ option)
+  const existing = Array.from(select.options);
+  existing.forEach(opt => {
+    if (!defaultOptions.includes(opt.value) && opt.value !== '__custom__') {
+      select.removeChild(opt);
+    }
+  });
+  
+  // Insert custom locations before the last "__custom__" option
+  const customOpt = select.querySelector('option[value="__custom__"]');
+  APP_STATE.customLocations.forEach(loc => {
+    if (!select.querySelector(`option[value="${loc}"]`)) {
+      const opt = document.createElement('option');
+      opt.value = loc;
+      opt.textContent = loc;
+      if (customOpt) select.insertBefore(opt, customOpt);
+      else select.appendChild(opt);
+    }
+  });
+  
+  // Set value to current session store
+  select.value = APP_STATE.sessionStore;
+};
+
+const refreshStoreChips = () => {
+  const chipsContainer = document.querySelector('.store-quick-chips');
+  const datalist = document.getElementById('storeLocationList');
+
+  // Update datalist suggestions in modal
+  if (datalist) {
+    const defaultDatalist = [
+      'Lotte Mart Grocery - Puri Indah',
+      'Superindo', 'Indomaret', 'Alfamart',
+      'Hypermart', 'Transmart', 'Pasar Modern'
+    ];
+    datalist.innerHTML = '';
+    [...defaultDatalist, ...APP_STATE.customLocations].forEach(loc => {
+      const opt = document.createElement('option');
+      opt.value = loc;
+      datalist.appendChild(opt);
+    });
+  }
+
+  if (!chipsContainer) return;
+  
+  // Remove old custom chips
+  chipsContainer.querySelectorAll('.store-chip.custom-chip').forEach(el => el.remove());
+  
+  // Add new custom chips
+  APP_STATE.customLocations.forEach(loc => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'store-chip custom-chip';
+    btn.dataset.store = loc;
+    btn.textContent = loc.length > 18 ? loc.substring(0,18) + '...' : loc;
+    btn.title = loc;
+    btn.addEventListener('click', () => {
+      if (dom.inputStoreName) {
+        dom.inputStoreName.value = loc;
+        updateModalFormLivePreviews();
+        playSound('click');
+      }
+    });
+    chipsContainer.appendChild(btn);
+  });
 };
 
 const showToast = (message, type = 'success', duration = 3000) => {
@@ -419,6 +705,8 @@ const updateDatalistHistory = () => {
 // ========================================================
 // 6. F-05: SAFETY CAP & BUDGET TRACKER LOGIC (DT2 Criterion 2)
 // ========================================================
+let _lastBudgetAlertTier = 'safe';
+
 const updateBudgetSafetyDisplay = () => {
   const cap = Number(APP_STATE.budgetCap) || 400000;
   
@@ -473,6 +761,7 @@ const updateBudgetSafetyDisplay = () => {
     // Waspada / Kuning (>= 90% dan <= 100%)
     // Bahaya / Merah Tegas (> 100%) dengan teks exact
     if (percentage < 90) {
+      _lastBudgetAlertTier = 'safe';
       dom.safetyCapSection.classList.add('safe');
       dom.budgetProgressBar.classList.add('safe');
       dom.safetyAlertBox.classList.add('safe');
@@ -483,6 +772,10 @@ const updateBudgetSafetyDisplay = () => {
       if (dom.safetyAlertDesc) dom.safetyAlertDesc.textContent = `Pengeluaran Anda baru ${percentage.toFixed(1)}% dari limit dompet. Sisa aman: ${formatRupiah(remaining)}.`;
 
     } else if (percentage >= 90 && percentage <= 100) {
+      if (_lastBudgetAlertTier === 'safe') {
+        playSound('warning');
+      }
+      _lastBudgetAlertTier = 'warning';
       dom.safetyCapSection.classList.add('warning');
       dom.budgetProgressBar.classList.add('warning');
       dom.safetyAlertBox.classList.add('warning');
@@ -494,6 +787,10 @@ const updateBudgetSafetyDisplay = () => {
 
     } else {
       // > 100%: Banner Merah Tegas
+      if (_lastBudgetAlertTier !== 'danger') {
+        playSound('warning');
+      }
+      _lastBudgetAlertTier = 'danger';
       dom.safetyCapSection.classList.add('danger');
       dom.budgetProgressBar.classList.add('danger');
       dom.safetyAlertBox.classList.add('danger');
@@ -800,6 +1097,7 @@ const saveItem = async (itemData) => {
         updateData.updatedAt = serverTimestamp;
         updateData.walletLimit = APP_STATE.budgetCap;
         await db.collection('groceries').doc(itemData.id).update(updateData);
+        playSound('success');
         showToast('Barang berhasil diperbarui di Cloud!', 'success');
       } else {
         const createData = {
@@ -809,13 +1107,16 @@ const saveItem = async (itemData) => {
           updatedAt: serverTimestamp
         };
         await db.collection('groceries').add(createData);
+        playSound('success');
         showToast('Barang berhasil disimpan ke Cloud Firestore!', 'success');
       }
       return;
     } catch (err) {
-      console.warn('Firestore write failed, falling back to LocalStorage:', err);
+      console.error('Firestore write failed, falling back to LocalStorage:', err);
       showToast('Gagal sinkron Cloud, disimpan ke LocalStorage', 'warning');
-      setConnectionStatus(false, 'Mode Offline (LocalStorage)');
+      if (!navigator.onLine) {
+        setConnectionStatus('offline', 'Mode Offline (LocalStorage)');
+      }
     }
   }
 
@@ -840,6 +1141,7 @@ const saveItem = async (itemData) => {
   updatePriceHistoryMap(APP_STATE.items);
   updateBudgetSafetyDisplay();
   renderGroceryList();
+  playSound('success');
   showToast(isEditing ? 'Barang diperbarui (Lokal)' : 'Barang ditambahkan (Lokal)', 'success');
 };
 
@@ -847,6 +1149,7 @@ const saveItem = async (itemData) => {
  * Delete Item
  */
 const deleteItem = async (itemId) => {
+  playSound('delete');
   if (APP_STATE.isFirestoreActive && db && !itemId.startsWith('local_')) {
     try {
       await db.collection('groceries').doc(itemId).delete();
@@ -873,6 +1176,11 @@ const toggleBoughtStatus = async (itemId) => {
   if (!item) return;
 
   const newStatus = !item.isBought;
+  if (newStatus) {
+    playSound('success');
+  } else {
+    playSound('click');
+  }
 
   if (APP_STATE.isFirestoreActive && db && !itemId.startsWith('local_')) {
     try {
@@ -899,49 +1207,64 @@ const toggleBoughtStatus = async (itemId) => {
 // ========================================================
 // 9. FIREBASE REALTIME INITIALIZATION & CONFIG SYNC (DT2 Criterion 3)
 // ========================================================
-const setConnectionStatus = (isCloud, text) => {
+const setConnectionStatus = (status, text) => {
+  // status: 'online' | 'connecting' | 'offline'
   if (dom.connectionBanner) {
-    dom.connectionBanner.className = `connection-banner ${isCloud ? 'online' : 'offline'}`;
+    dom.connectionBanner.className = `connection-banner ${status}`;
   }
   if (dom.connectionText) {
     dom.connectionText.textContent = text;
   }
   if (dom.settingsSyncText) {
-    dom.settingsSyncText.textContent = isCloud ? '🟢 Terhubung ke Cloud Firestore' : '🟡 Mode Offline / LocalStorage';
+    if (status === 'online') {
+      dom.settingsSyncText.textContent = '🟢 Terhubung ke Cloud Firestore';
+    } else if (status === 'connecting') {
+      dom.settingsSyncText.textContent = '🔵 Menghubungkan ke Cloud Firestore...';
+    } else {
+      dom.settingsSyncText.textContent = '🟡 Mode Offline / LocalStorage';
+    }
   }
-  APP_STATE.isFirestoreActive = isCloud;
+  APP_STATE.isFirestoreActive = (status === 'online' || status === 'connecting');
 };
 
 /**
- * Sinkronisasi metadata konfigurasi (storeLocation, shoppingDate, walletLimit) ke Firestore
- * Memastikan sinkron realtime antar HP dan PC
+ * Sinkronisasi metadata konfigurasi (activeLocation, storeLocation, shoppingDate, walletLimit, customLocations) ke Firestore
+ * Memastikan sinkron realtime antar HP dan PC seketika
  */
 const syncConfigToFirestore = async (updates = {}) => {
-  if (!APP_STATE.isFirestoreActive || !db) return;
+  if (!db) return;
   try {
     const serverTimestamp = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
       ? firebase.firestore.FieldValue.serverTimestamp()
       : Date.now();
 
-    await db.collection('settings').doc('appConfig').set({
+    const payload = {
+      activeLocation: APP_STATE.sessionStore,
       storeLocation: APP_STATE.sessionStore,
+      customLocations: APP_STATE.customLocations,
       shoppingDate: APP_STATE.sessionDate,
       walletLimit: APP_STATE.budgetCap,
       updatedAt: serverTimestamp,
       ...updates
-    }, { merge: true });
+    };
+
+    // Simpan ke dokumen settings/activeSession sesuai spesifikasi
+    await db.collection('settings').doc('activeSession').set(payload, { merge: true });
+    // Juga simpan ke settings/appConfig untuk kompatibilitas penuh
+    await db.collection('settings').doc('appConfig').set(payload, { merge: true });
   } catch (err) {
-    console.warn('Failed to sync config to Firestore:', err);
+    console.warn('Gagal sinkronisasi sesi ke Firestore:', err);
   }
 };
 
 const initFirebaseRealtime = async () => {
-  setConnectionStatus(false, 'Menghubungkan ke Cloud Firestore...');
+  // Gunakan status connecting (biru/netral) agar tidak memicu banner kuning offline secara prematur
+  setConnectionStatus('connecting', 'Menghubungkan ke Cloud Firestore...');
 
   try {
     if (typeof firebase === 'undefined' || !firebase.initializeApp) {
       console.warn('Firebase SDK compat belum termuat. Menjalankan mode LocalStorage.');
-      setConnectionStatus(false, 'Mode Offline (LocalStorage)');
+      setConnectionStatus('offline', 'Mode Offline (LocalStorage)');
       loadItemsFromLocalStorage();
       updatePriceHistoryMap(APP_STATE.items);
       updateBudgetSafetyDisplay();
@@ -976,73 +1299,97 @@ const initFirebaseRealtime = async () => {
         updatePriceHistoryMap(APP_STATE.items);
         updateBudgetSafetyDisplay();
         renderGroceryList();
-        setConnectionStatus(true, 'Realtime Cloud Firestore Aktif');
+        setConnectionStatus('online', 'Realtime Cloud Firestore Aktif');
       }, (error) => {
-        console.warn('Firestore onSnapshot error, falling back to LocalStorage:', error);
-        setConnectionStatus(false, 'Mode Offline (LocalStorage) - Firestore Error');
+        console.error('Firestore onSnapshot groceries error:', error);
+        if (error && error.code === 'permission-denied') {
+          console.error('Firestore Security Rules: Pastikan aturan `allow read, write: if true;` aktif di Firebase Console.');
+        }
+        if (!navigator.onLine) {
+          setConnectionStatus('offline', 'Mode Offline (LocalStorage)');
+        }
         loadItemsFromLocalStorage();
         updatePriceHistoryMap(APP_STATE.items);
         updateBudgetSafetyDisplay();
         renderGroceryList();
       });
 
-    // 2. Setup Realtime Listener for Config Document (storeLocation, shoppingDate, walletLimit)
+    // 2. Setup Realtime Listener for Active Session & Config
     if (unsubscribeConfigSnapshot) {
       unsubscribeConfigSnapshot();
     }
 
-    unsubscribeConfigSnapshot = db.collection('settings').doc('appConfig')
+    const processSessionData = (cfg) => {
+      if (!cfg) return;
+      let shouldUpdateUI = false;
+
+      // Sinkronisasi walletLimit realtime dari HP ke PC & sebaliknya
+      if (cfg.walletLimit && Number(cfg.walletLimit) !== APP_STATE.budgetCap) {
+        APP_STATE.budgetCap = Number(cfg.walletLimit);
+        try {
+          localStorage.setItem(STORAGE_KEYS.BUDGET, String(APP_STATE.budgetCap));
+          localStorage.setItem(STORAGE_KEYS.WALLET_LIMIT, String(APP_STATE.budgetCap));
+        } catch (e) {}
+        if (dom.inputBudgetCapSetting) dom.inputBudgetCapSetting.value = APP_STATE.budgetCap;
+        shouldUpdateUI = true;
+      }
+
+      // Sinkronisasi customLocations realtime
+      if (Array.isArray(cfg.customLocations) && cfg.customLocations.length > 0) {
+        const merged = Array.from(new Set([...APP_STATE.customLocations, ...cfg.customLocations]));
+        if (merged.length !== APP_STATE.customLocations.length) {
+          APP_STATE.customLocations = merged;
+          saveCustomLocations();
+          refreshLocationDropdown();
+          refreshStoreChips();
+        }
+      }
+
+      // Sinkronisasi activeLocation / storeLocation realtime
+      const newLoc = cfg.activeLocation || cfg.storeLocation;
+      if (newLoc && newLoc !== APP_STATE.sessionStore) {
+        APP_STATE.sessionStore = newLoc;
+        try {
+          localStorage.setItem(STORAGE_KEYS.STORE_LOCATION, APP_STATE.sessionStore);
+          localStorage.setItem(STORAGE_KEYS.SESSION_STORE, APP_STATE.sessionStore);
+        } catch (e) {}
+        if (dom.headerStoreLocation) dom.headerStoreLocation.value = APP_STATE.sessionStore;
+        if (dom.sessionStoreBadge) {
+          dom.sessionStoreBadge.textContent = APP_STATE.sessionStore.replace('Grocery - ', '');
+        }
+        shouldUpdateUI = true;
+      }
+
+      // Sinkronisasi shoppingDate realtime
+      if (cfg.shoppingDate && cfg.shoppingDate !== APP_STATE.sessionDate) {
+        APP_STATE.sessionDate = cfg.shoppingDate;
+        try {
+          localStorage.setItem(STORAGE_KEYS.SHOPPING_DATE, APP_STATE.sessionDate);
+          localStorage.setItem(STORAGE_KEYS.SESSION_DATE, APP_STATE.sessionDate);
+        } catch (e) {}
+        if (dom.headerShoppingDate) dom.headerShoppingDate.value = APP_STATE.sessionDate;
+        shouldUpdateUI = true;
+      }
+
+      if (shouldUpdateUI) {
+        updateBudgetSafetyDisplay();
+        renderGroceryList();
+      }
+    };
+
+    // Listen to activeSession doc
+    unsubscribeConfigSnapshot = db.collection('settings').doc('activeSession')
       .onSnapshot((docSnap) => {
         if (docSnap.exists) {
-          const cfg = docSnap.data();
-          let shouldUpdateUI = false;
-
-          // Sinkronisasi walletLimit realtime dari HP ke PC & sebaliknya
-          if (cfg.walletLimit && Number(cfg.walletLimit) !== APP_STATE.budgetCap) {
-            APP_STATE.budgetCap = Number(cfg.walletLimit);
-            try {
-              localStorage.setItem(STORAGE_KEYS.BUDGET, String(APP_STATE.budgetCap));
-              localStorage.setItem(STORAGE_KEYS.WALLET_LIMIT, String(APP_STATE.budgetCap));
-            } catch (e) {}
-            if (dom.inputBudgetCapSetting) dom.inputBudgetCapSetting.value = APP_STATE.budgetCap;
-            shouldUpdateUI = true;
-          }
-
-          // Sinkronisasi storeLocation realtime
-          if (cfg.storeLocation && cfg.storeLocation !== APP_STATE.sessionStore) {
-            APP_STATE.sessionStore = cfg.storeLocation;
-            try {
-              localStorage.setItem(STORAGE_KEYS.STORE_LOCATION, APP_STATE.sessionStore);
-              localStorage.setItem(STORAGE_KEYS.SESSION_STORE, APP_STATE.sessionStore);
-            } catch (e) {}
-            if (dom.headerStoreLocation) dom.headerStoreLocation.value = APP_STATE.sessionStore;
-            if (dom.sessionStoreBadge) dom.sessionStoreBadge.textContent = APP_STATE.sessionStore.replace('Grocery - ', '');
-            shouldUpdateUI = true;
-          }
-
-          // Sinkronisasi shoppingDate realtime
-          if (cfg.shoppingDate && cfg.shoppingDate !== APP_STATE.sessionDate) {
-            APP_STATE.sessionDate = cfg.shoppingDate;
-            try {
-              localStorage.setItem(STORAGE_KEYS.SHOPPING_DATE, APP_STATE.sessionDate);
-              localStorage.setItem(STORAGE_KEYS.SESSION_DATE, APP_STATE.sessionDate);
-            } catch (e) {}
-            if (dom.headerShoppingDate) dom.headerShoppingDate.value = APP_STATE.sessionDate;
-            shouldUpdateUI = true;
-          }
-
-          if (shouldUpdateUI) {
-            updateBudgetSafetyDisplay();
-            renderGroceryList();
-          }
+          processSessionData(docSnap.data());
         }
       }, (err) => {
-        console.warn('Config onSnapshot listener error:', err);
+        console.error('Firestore activeSession listener error:', err);
       });
 
   } catch (err) {
     console.error('Failed to initialize Firebase:', err);
-    setConnectionStatus(false, 'Mode Offline (LocalStorage)');
+    setConnectionStatus('offline', 'Mode Offline (LocalStorage)');
     loadItemsFromLocalStorage();
     updatePriceHistoryMap(APP_STATE.items);
     updateBudgetSafetyDisplay();
@@ -1374,20 +1721,65 @@ const loadDemoGroceryData = async () => {
 // 14. EVENT LISTENERS
 // ========================================================
 const setupEventListeners = () => {
-  // Sesi Belanja: Sinkronisasi Lokasi Supermarket di Header (DT2 Criterion 3)
+  // Sesi Belanja: Sinkronisasi Lokasi Supermarket di Header (DT2 Criterion 3 & Kustom Lokasi)
   if (dom.headerStoreLocation) {
     dom.headerStoreLocation.value = APP_STATE.sessionStore;
     dom.headerStoreLocation.addEventListener('change', (e) => {
-      APP_STATE.sessionStore = e.target.value;
-      try {
-        localStorage.setItem(STORAGE_KEYS.STORE_LOCATION, APP_STATE.sessionStore);
-        localStorage.setItem(STORAGE_KEYS.SESSION_STORE, APP_STATE.sessionStore);
-      } catch (err) {}
-      if (dom.sessionStoreBadge) {
-        dom.sessionStoreBadge.textContent = APP_STATE.sessionStore.replace('Grocery - ', '');
+      const val = e.target.value;
+      const customWrapper = document.getElementById('customLocationInputWrapper');
+      const customInput = document.getElementById('customLocationInput');
+
+      if (val === '__custom__') {
+        if (customWrapper) {
+          customWrapper.style.display = 'flex';
+          if (customInput) {
+            customInput.focus();
+          }
+        }
+      } else {
+        if (customWrapper) customWrapper.style.display = 'none';
+        APP_STATE.sessionStore = val;
+        try {
+          localStorage.setItem(STORAGE_KEYS.STORE_LOCATION, APP_STATE.sessionStore);
+          localStorage.setItem(STORAGE_KEYS.SESSION_STORE, APP_STATE.sessionStore);
+        } catch (err) {}
+        if (dom.sessionStoreBadge) {
+          dom.sessionStoreBadge.textContent = APP_STATE.sessionStore.replace('Grocery - ', '');
+        }
+        syncConfigToFirestore({
+          activeLocation: APP_STATE.sessionStore,
+          storeLocation: APP_STATE.sessionStore
+        });
+        playSound('click');
+        showToast(`Lokasi sesi belanja: ${APP_STATE.sessionStore}`, 'success', 2000);
       }
-      syncConfigToFirestore({ storeLocation: APP_STATE.sessionStore });
-      showToast(`Lokasi sesi belanja: ${APP_STATE.sessionStore}`, 'success', 2000);
+    });
+  }
+
+  // Tombol Simpan Lokasi Kustom
+  const btnSaveCustomLoc = document.getElementById('btnSaveCustomLocation');
+  const customLocInput = document.getElementById('customLocationInput');
+  if (btnSaveCustomLoc && customLocInput) {
+    btnSaveCustomLoc.addEventListener('click', (e) => {
+      e.preventDefault();
+      const name = customLocInput.value;
+      if (!name || !name.trim()) {
+        showToast('Ketik nama toko atau lokasi supermarket kustom terlebih dahulu!', 'warning');
+        return;
+      }
+      addCustomLocation(name);
+    });
+  }
+
+  // Tombol Batal Lokasi Kustom
+  const btnCancelCustomLoc = document.getElementById('btnCancelCustomLocation');
+  if (btnCancelCustomLoc) {
+    btnCancelCustomLoc.addEventListener('click', (e) => {
+      e.preventDefault();
+      playSound('click');
+      const customWrapper = document.getElementById('customLocationInputWrapper');
+      if (customWrapper) customWrapper.style.display = 'none';
+      if (dom.headerStoreLocation) dom.headerStoreLocation.value = APP_STATE.sessionStore;
     });
   }
 
@@ -1401,7 +1793,125 @@ const setupEventListeners = () => {
         localStorage.setItem(STORAGE_KEYS.SESSION_DATE, APP_STATE.sessionDate);
       } catch (err) {}
       syncConfigToFirestore({ shoppingDate: APP_STATE.sessionDate });
+      playSound('click');
       showToast(`Tanggal transaksi sesi: ${formatDisplayDate(APP_STATE.sessionDate)}`, 'success', 2000);
+    });
+  }
+
+  // Date Picker FontAwesome Triggers via showPicker()
+  const btnCalTrigger = document.getElementById('btnCalTrigger');
+  const headerDateInput = document.getElementById('headerShoppingDate');
+  if (btnCalTrigger && headerDateInput) {
+    btnCalTrigger.addEventListener('click', (e) => {
+      e.preventDefault();
+      playSound('click');
+      if (typeof headerDateInput.showPicker === 'function') {
+        try { headerDateInput.showPicker(); } catch (err) { headerDateInput.focus(); }
+      } else {
+        headerDateInput.focus();
+      }
+    });
+  }
+
+  const btnModalCalTrigger = document.getElementById('btnModalCalTrigger');
+  const modalDateInput = document.getElementById('inputShoppingDate');
+  if (btnModalCalTrigger && modalDateInput) {
+    btnModalCalTrigger.addEventListener('click', (e) => {
+      e.preventDefault();
+      playSound('click');
+      if (typeof modalDateInput.showPicker === 'function') {
+        try { modalDateInput.showPicker(); } catch (err) { modalDateInput.focus(); }
+      } else {
+        modalDateInput.focus();
+      }
+    });
+  }
+
+  // Cegah reload saat menekan Enter di semua form dan input secara ketat
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const target = e.target;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT')) {
+        // Jika input lokasi kustom
+        if (target.id === 'customLocationInput') {
+          e.preventDefault();
+          const btn = document.getElementById('btnSaveCustomLocation');
+          if (btn) btn.click();
+          return;
+        }
+        // Jika input pencarian
+        if (target.id === 'searchInput') {
+          e.preventDefault();
+          target.blur();
+          return;
+        }
+        // Jika input kalkulator diskon cepat
+        if (['qcPrice', 'qcD1', 'qcD2', 'qcQty'].includes(target.id)) {
+          e.preventDefault();
+          target.blur();
+          return;
+        }
+        // Jika input budget cap
+        if (target.id === 'inputBudgetCapSetting') {
+          e.preventDefault();
+          const btnSave = document.getElementById('btnSaveBudgetCap');
+          if (btnSave) btnSave.click();
+          return;
+        }
+        // Jika input di luar form
+        if (!target.form) {
+          e.preventDefault();
+        }
+      }
+    }
+  });
+
+  // Theme Toggle Button di Header
+  const btnToggleTheme = document.getElementById('btnToggleTheme');
+  if (btnToggleTheme) {
+    btnToggleTheme.addEventListener('click', () => {
+      playSound('click');
+      const nextTheme = APP_STATE.theme === 'light' ? 'dark' : 'light';
+      applyTheme(nextTheme);
+      showToast(`Tema ${nextTheme === 'light' ? 'Terang / Putih ☀️' : 'Gelap / Hitam 🌙'} aktif`, 'success', 1500);
+    });
+  }
+
+  // Pilihan Tema di Modal Pengaturan
+  const btnThemeDark = document.getElementById('btnThemeDark');
+  const btnThemeLight = document.getElementById('btnThemeLight');
+  if (btnThemeDark) {
+    btnThemeDark.addEventListener('click', () => {
+      playSound('click');
+      applyTheme('dark');
+      showToast('Tema Gelap / Hitam 🌙 aktif', 'success', 1500);
+    });
+  }
+  if (btnThemeLight) {
+    btnThemeLight.addEventListener('click', () => {
+      playSound('click');
+      applyTheme('light');
+      showToast('Tema Terang / Putih ☀️ aktif', 'success', 1500);
+    });
+  }
+
+  // Sound Toggle Button di Header
+  const btnToggleSound = document.getElementById('btnToggleSound');
+  if (btnToggleSound) {
+    btnToggleSound.addEventListener('click', () => {
+      const nextState = !APP_STATE.soundEnabled;
+      applySoundState(nextState);
+      if (nextState) playSound('click');
+      showToast(nextState ? 'Efek suara aktif 🔊' : 'Efek suara dimatikan 🔇', 'success', 1500);
+    });
+  }
+
+  // Sound Checkbox di Modal Pengaturan
+  const soundToggleCheckbox = document.getElementById('soundToggleCheckbox');
+  if (soundToggleCheckbox) {
+    soundToggleCheckbox.addEventListener('change', (e) => {
+      applySoundState(e.target.checked);
+      if (e.target.checked) playSound('click');
     });
   }
 
@@ -1414,8 +1924,8 @@ const setupEventListeners = () => {
   }
 
   // Modal Add Open / Close
-  if (dom.btnOpenAddModal) dom.btnOpenAddModal.addEventListener('click', () => openAddEditModal(null));
-  if (dom.btnEmptyAdd) dom.btnEmptyAdd.addEventListener('click', () => openAddEditModal(null));
+  if (dom.btnOpenAddModal) dom.btnOpenAddModal.addEventListener('click', () => { playSound('click'); openAddEditModal(null); });
+  if (dom.btnEmptyAdd) dom.btnEmptyAdd.addEventListener('click', () => { playSound('click'); openAddEditModal(null); });
   if (dom.btnCloseModal) dom.btnCloseModal.addEventListener('click', closeModal);
   if (dom.btnCancelModal) dom.btnCancelModal.addEventListener('click', closeModal);
 
@@ -1504,6 +2014,7 @@ const setupEventListeners = () => {
   // Quantity Stepper di Modal Tambah/Edit
   if (dom.btnQtyMinus) {
     dom.btnQtyMinus.addEventListener('click', () => {
+      playSound('click');
       let q = Number(dom.inputQuantity.value) || 1;
       if (q > 1) {
         dom.inputQuantity.value = q - 1;
@@ -1514,6 +2025,7 @@ const setupEventListeners = () => {
 
   if (dom.btnQtyPlus) {
     dom.btnQtyPlus.addEventListener('click', () => {
+      playSound('click');
       let q = Number(dom.inputQuantity.value) || 1;
       dom.inputQuantity.value = q + 1;
       updateModalFormLivePreviews();
@@ -1524,6 +2036,7 @@ const setupEventListeners = () => {
   if (dom.presetBtns) {
     dom.presetBtns.forEach(btn => {
       btn.addEventListener('click', () => {
+        playSound('click');
         if (dom.inputDiscount1) dom.inputDiscount1.value = btn.dataset.d1;
         if (dom.inputDiscount2) dom.inputDiscount2.value = btn.dataset.d2;
         updateModalFormLivePreviews();
@@ -1541,9 +2054,11 @@ const setupEventListeners = () => {
       const itemId = actionEl.dataset.id;
 
       if (action === 'toggle-bought') {
+        playSound('success');
         await toggleBoughtStatus(itemId);
       } else if (action === 'delete') {
         if (confirm('Hapus barang ini dari daftar belanja?')) {
+          playSound('delete');
           await deleteItem(itemId);
         }
       } else if (action === 'edit') {
@@ -1553,9 +2068,11 @@ const setupEventListeners = () => {
         }
       } else if (action === 'decrease-qty') {
         // DT2 Kriteria 1: Tombol - 44x44px langsung update detik itu juga
+        playSound('click');
         await updateItemQuantity(itemId, -1);
       } else if (action === 'increase-qty') {
         // DT2 Kriteria 1: Tombol + 44x44px langsung update detik itu juga
+        playSound('click');
         await updateItemQuantity(itemId, 1);
       }
     });
@@ -1565,6 +2082,7 @@ const setupEventListeners = () => {
   if (dom.filterTabs) {
     dom.filterTabs.forEach(tab => {
       tab.addEventListener('click', () => {
+        playSound('click');
         dom.filterTabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         APP_STATE.activeFilter = tab.dataset.filter;
@@ -1750,7 +2268,7 @@ const setupEventListeners = () => {
   window.addEventListener('offline', () => {
     APP_STATE.isOnline = false;
     showToast('Koneksi internet terputus. Mode offline aktif.', 'warning');
-    setConnectionStatus(false, 'Mode Offline (LocalStorage)');
+    setConnectionStatus('offline', 'Mode Offline (LocalStorage)');
   });
 };
 
@@ -1774,27 +2292,36 @@ const startApp = () => {
   // 1. Inisialisasi referensi elemen DOM
   initDom();
 
-  // 2. Muat cache LocalStorage untuk tampilan instan tanpa lag saat ditekan F5
+  // 2. Inisialisasi tema dan audio sound effects
+  initTheme();
+  initSound();
+
+  // 3. Muat lokasi kustom & perbarui dropdown serta quick chips
+  loadCustomLocations();
+  refreshLocationDropdown();
+  refreshStoreChips();
+
+  // 4. Muat cache LocalStorage untuk tampilan instan tanpa lag saat ditekan F5
   loadItemsFromLocalStorage();
 
-  // 3. Pasang SEMUA event listener tombol
+  // 5. Pasang SEMUA event listener tombol
   setupEventListeners();
 
-  // 4. Update tampilan sesi header aktif & input pengaturan
+  // 6. Update tampilan sesi header aktif & input pengaturan
   if (dom.headerStoreLocation) dom.headerStoreLocation.value = APP_STATE.sessionStore;
   if (dom.headerShoppingDate) dom.headerShoppingDate.value = APP_STATE.sessionDate;
   if (dom.inputBudgetCapSetting) dom.inputBudgetCapSetting.value = APP_STATE.budgetCap;
   if (dom.sessionStoreBadge) dom.sessionStoreBadge.textContent = APP_STATE.sessionStore.replace('Grocery - ', '');
 
-  // 5. Update data list, kalkulasi anggaran dan render daftar belanja
+  // 7. Update data list, kalkulasi anggaran dan render daftar belanja
   updatePriceHistoryMap(APP_STATE.items);
   updateBudgetSafetyDisplay();
   renderGroceryList();
 
-  // 6. Daftarkan Service Worker PWA jika didukung protokol
+  // 8. Daftarkan Service Worker PWA jika didukung protokol
   registerServiceWorker();
 
-  // 7. Hubungkan ke Cloud Firestore Realtime (Compat) & Sinkronisasi metadata
+  // 9. Hubungkan ke Cloud Firestore Realtime (Compat) & Sinkronisasi metadata
   initFirebaseRealtime();
 };
 

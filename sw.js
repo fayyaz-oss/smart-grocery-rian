@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smart-grocery-v1';
+const CACHE_NAME = 'smart-grocery-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -9,11 +9,12 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Caching app shell');
+      console.log('[SW] Caching app shell v2');
       return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
@@ -23,7 +24,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keyList.map((key) => {
           if (key !== CACHE_NAME) {
-            console.log('[SW] Removing old cache', key);
+            console.log('[SW] Removing old cache:', key);
             return caches.delete(key);
           }
         })
@@ -33,23 +34,30 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Pass through non-GET requests or Firebase Firestore backend requests
+  // Hanya proses method GET
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // Firestore & external CDN requests: network first with graceful fallback
-  if (url.origin.includes('firestore.googleapis.com') || url.origin.includes('gstatic.com') || url.origin.includes('cdnjs.cloudflare.com')) {
+  // Jangan blokir request backend Firebase / Google APIs / CDNs
+  if (
+    url.origin.includes('firestore.googleapis.com') ||
+    url.origin.includes('gstatic.com') ||
+    url.origin.includes('cdnjs.cloudflare.com') ||
+    url.origin.includes('fonts.googleapis.com') ||
+    url.origin.includes('fonts.gstatic.com')
+  ) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // App shell assets: Stale While Revalidate
+  // Network-First Strategy untuk file inti aplikasi (index.html, script.js, style.css, dll.)
+  // Memastikan pengguna selalu mendapatkan kode terbaru dari server, fallback cache jika offline
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
+    fetch(event.request)
+      .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -57,10 +65,7 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return networkResponse;
-      }).catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });
-
