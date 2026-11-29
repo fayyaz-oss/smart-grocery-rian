@@ -1180,6 +1180,17 @@ const setConnectionStatus = (status, text) => {
   APP_STATE.isFirestoreActive = (status === 'online' || status === 'connecting');
 };
 
+let _lastPermissionAlertTime = 0;
+const notifyPermissionDenied = () => {
+  const now = Date.now();
+  if (now - _lastPermissionAlertTime < 8000) return; // Debounce 8 detik agar notifikasi tidak bertumpuk
+  _lastPermissionAlertTime = now;
+  
+  const errorMsg = 'Izin akses Firestore ditolak (Periksa Security Rules di Firebase Console)';
+  console.error('[Firestore Security Rules Error]: Akses ditolak (permission-denied). Solusi: Buka Firebase Console -> Firestore Database -> Rules, ubah menjadi allow read, write: if true;');
+  showToast(errorMsg, 'danger', 6000);
+};
+
 /**
  * Sinkronisasi seluruh state sesi belanja ke SATU ID dokumen Firestore bersama:
  * sessions/rian_main_session
@@ -1214,12 +1225,9 @@ const syncSessionToFirestore = async (customPayload = {}) => {
     console.log('[Firestore] Berhasil sinkronisasi (setDoc) ke:', `${FIRESTORE_SESSION.COLLECTION}/${FIRESTORE_SESSION.DOC_ID}`);
   } catch (err) {
     console.error('[Firestore setDoc Error]: Gagal menyimpan ke session Firestore:', err);
-    setConnectionStatus('offline', 'Mode Offline (Gagal Sinkronisasi Cloud)');
+    setConnectionStatus('offline', 'Mode Offline (Izin Ditolak / Periksa Rules)');
     if (err && err.code === 'permission-denied') {
-      const errorMsg = 'Akses Firestore DITOLAK (permission-denied). Periksa Security Rules di Firebase Console!';
-      console.error(errorMsg);
-      showToast(errorMsg, 'danger', 6000);
-      alert('PERINGATAN FIREBASE:\nAkses ke Cloud Firestore Ditolak (permission-denied).\n\nSolusi: Buka Firebase Console -> Firestore Database -> Rules, lalu ubah menjadi:\nallow read, write: if true;');
+      notifyPermissionDenied();
     } else {
       showToast(`Gagal sinkronisasi ke Cloud: ${err.message || 'Koneksi terputus'}`, 'warning', 4000);
     }
@@ -1361,12 +1369,9 @@ const initFirebaseRealtime = async () => {
       }
     }, (error) => {
       console.error('[Firestore onSnapshot Error]:', error);
-      setConnectionStatus('offline', 'Mode Offline (Gagal Terhubung Cloud)');
+      setConnectionStatus('offline', 'Mode Offline (Izin Ditolak / Periksa Rules)');
       if (error && error.code === 'permission-denied') {
-        const errorMsg = 'Akses listener Firestore DITOLAK (permission-denied). Periksa Security Rules di Firebase Console!';
-        console.error(errorMsg);
-        showToast(errorMsg, 'danger', 6000);
-        alert('PERINGATAN FIREBASE:\nListener Realtime Firestore Ditolak (permission-denied).\n\nSolusi: Buka Firebase Console -> Firestore Database -> Rules, lalu ubah menjadi:\nallow read, write: if true;');
+        notifyPermissionDenied();
       } else {
         showToast('Koneksi Firestore terganggu, menggunakan cadangan lokal.', 'warning', 3500);
       }
