@@ -362,6 +362,7 @@
           </label>
           <div class="custom-select-wrapper">
             <select id="inputCategory">
+              <option value="Bahan Pokok">🌾 Bahan Pokok / Sembako</option>
               <option value="Sembako">🌾 Sembako & Bahan Pokok</option>
               <option value="Sayur & Buah">🥦 Sayur & Buah Segar</option>
               <option value="Daging & Ikan">🥩 Daging, Unggas & Ikan</option>
@@ -396,6 +397,8 @@
             </label>
             <div class="custom-select-wrapper">
               <select id="inputUnit">
+                <option value="karung/5kg">karung/5kg</option>
+                <option value="karung">karung</option>
                 <option value="pcs">pcs</option>
                 <option value="kg">kg</option>
                 <option value="gr">gram</option>
@@ -680,6 +683,12 @@
           <div class="input-with-currency">
             <span class="currency-prefix">Rp</span>
             <input type="number" id="inputBudgetCapSetting" inputmode="numeric" value="400000" min="10000" step="10000">
+          </div>
+          <div class="budget-presets" style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn-budget-preset" data-amount="100000" style="font-size: 0.72rem; padding: 5px 9px; border-radius: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: var(--text-main); cursor: pointer; font-weight: 600;">Rp 100.000 (Uji DT2)</button>
+            <button type="button" class="btn-budget-preset" data-amount="150000" style="font-size: 0.72rem; padding: 5px 9px; border-radius: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: var(--text-main); cursor: pointer; font-weight: 600;">Rp 150.000</button>
+            <button type="button" class="btn-budget-preset" data-amount="350000" style="font-size: 0.72rem; padding: 5px 9px; border-radius: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: var(--text-main); cursor: pointer; font-weight: 600;">Rp 350.000 (Rian)</button>
+            <button type="button" class="btn-budget-preset" data-amount="400000" style="font-size: 0.72rem; padding: 5px 9px; border-radius: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: var(--text-main); cursor: pointer; font-weight: 600;">Rp 400.000</button>
           </div>
           <button id="btnSaveBudgetCap" class="btn-primary" style="margin-top: 10px; width: 100%;">
             <i class="fa-solid fa-check"></i> Simpan Batas Anggaran

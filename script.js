@@ -563,8 +563,49 @@ const calculateTieredDiscount = (price, d1 = 0, d2 = 0) => {
 // ========================================================
 // 5. F-04: STORE & DATE PRICE COMPARATOR (Riwayat Toko & Tanggal)
 // ========================================================
+// Baseline benchmark history studi kasus Rian di Lotte Mart Grocery - Puri Indah (Bulan Lalu: 26 September 2026)
+const BENCHMARK_PRICE_HISTORY = {
+  "beras 5kg": [
+    { id: "bench_beras_1", store: "Lotte Mart Grocery - Puri Indah", price: 68000, shoppingDate: "2026-09-26", dateTimestamp: new Date("2026-09-26").getTime() }
+  ],
+  "beras rojolele": [
+    { id: "bench_beras_rojolele_1", store: "Lotte Mart Grocery - Puri Indah", price: 68000, shoppingDate: "2026-09-26", dateTimestamp: new Date("2026-09-26").getTime() }
+  ],
+  "beras premium ramos 5kg": [
+    { id: "bench_beras_ramos_1", store: "Lotte Mart Grocery - Puri Indah", price: 68000, shoppingDate: "2026-09-26", dateTimestamp: new Date("2026-09-26").getTime() }
+  ],
+  "telur 1kg": [
+    { id: "bench_telur_1", store: "Lotte Mart Grocery - Puri Indah", price: 32000, shoppingDate: "2026-09-26", dateTimestamp: new Date("2026-09-26").getTime() }
+  ],
+  "garam 500g": [
+    { id: "bench_garam_1", store: "Lotte Mart Grocery - Puri Indah", price: 5000, shoppingDate: "2026-09-26", dateTimestamp: new Date("2026-09-26").getTime() }
+  ],
+  "minyak goreng 2l": [
+    { id: "bench_minyak_1", store: "Lotte Mart Grocery - Puri Indah", price: 43000, shoppingDate: "2026-09-26", dateTimestamp: new Date("2026-09-26").getTime() }
+  ],
+  "minyak goreng sania 2l": [
+    { id: "bench_minyak_sania_1", store: "Lotte Mart Grocery - Puri Indah", price: 35000, shoppingDate: "2026-09-26", dateTimestamp: new Date("2026-09-26").getTime() }
+  ],
+  "sabun cuci": [
+    { id: "bench_sabun_1", store: "Lotte Mart Grocery - Puri Indah", price: 20000, shoppingDate: "2026-09-26", dateTimestamp: new Date("2026-09-26").getTime() }
+  ],
+  "sabun cuci piring sunlight 750ml": [
+    { id: "bench_sunlight_1", store: "Lotte Mart Grocery - Puri Indah", price: 18500, shoppingDate: "2026-09-26", dateTimestamp: new Date("2026-09-26").getTime() }
+  ],
+  "wajan": [
+    { id: "bench_wajan_1", store: "Lotte Mart Grocery - Puri Indah", price: 100000, shoppingDate: "2026-09-26", dateTimestamp: new Date("2026-09-26").getTime() }
+  ],
+  "wajan anti lengket": [
+    { id: "bench_wajan_anti_1", store: "Lotte Mart Grocery - Puri Indah", price: 100000, shoppingDate: "2026-09-26", dateTimestamp: new Date("2026-09-26").getTime() }
+  ]
+};
+
 const updatePriceHistoryMap = (items) => {
   const history = {};
+  // Mulai dari baseline benchmark bulan lalu
+  Object.keys(BENCHMARK_PRICE_HISTORY).forEach(k => {
+    history[k] = [...BENCHMARK_PRICE_HISTORY[k]];
+  });
 
   items.forEach(item => {
     if (!item.name || !item.unitPrice) return;
@@ -602,7 +643,14 @@ const compareStorePrice = (itemName, currentStore, currentPrice, currentDate = n
 
   const cleanName = itemName.trim().toLowerCase();
   const currentStoreClean = (currentStore || '').trim().toLowerCase();
-  const historyList = APP_STATE.priceHistory[cleanName] || [];
+  let historyList = APP_STATE.priceHistory[cleanName];
+
+  // Pencocokan cerdas jika nama mengandung kata kunci (misal "beras rojolele" atau "beras 5kg")
+  if (!historyList || historyList.length === 0) {
+    const matchedKey = Object.keys(APP_STATE.priceHistory).find(k => cleanName.includes(k) || k.includes(cleanName));
+    if (matchedKey) historyList = APP_STATE.priceHistory[matchedKey];
+  }
+  historyList = historyList || [];
 
   const validHistory = historyList.filter(h => h.id !== currentItemId);
 
@@ -1590,111 +1638,97 @@ const openStoreComparisonModal = () => {
 };
 
 // ========================================================
-// 13. PRELOAD REALISTIC DEMO DATA (Studi Kasus Rian - Lotte Mart)
+// 13. PRELOAD REALISTIC DEMO DATA (DT2 Skenario Standar Kasus Rian)
 // ========================================================
 const loadDemoGroceryData = async () => {
   const sampleData = [
-    // 1. Minyak Goreng Sania 2L di Lotte Mart Puri Indah tanggal sebelumnya (Rp 35.000)
+    // 1. SRS F-01 & F-04: Beras 5kg (Bulan lalu Rp 68.000 -> Sekarang Rp 74.000: Panah Merah Naik ↑)
     {
-      name: "Minyak Goreng Sania 2L",
+      name: "Beras 5kg",
       store: "Lotte Mart Grocery - Puri Indah",
       storeLocation: "Lotte Mart Grocery - Puri Indah",
-      shoppingDate: "2026-11-08",
-      category: "Sembako",
+      shoppingDate: APP_STATE.sessionDate || getTodayDateString(),
+      category: "Bahan Pokok",
       quantity: 1,
-      unit: "pcs",
-      unitPrice: 35000,
+      unit: "karung/5kg",
+      unitPrice: 74000,
       discount1: 0,
       discount2: 0,
       isBought: true
     },
-    // 2. Minyak Goreng Sania 2L di Lotte Mart Puri Indah tanggal hari ini (Rp 38.000 -> Panah Naik ↑)
+    // 2. SRS F-04: Telur 1kg (Bulan lalu Rp 32.000 -> Sekarang Rp 28.000: Panah Hijau Turun ↓)
     {
-      name: "Minyak Goreng Sania 2L",
+      name: "Telur 1kg",
       store: "Lotte Mart Grocery - Puri Indah",
       storeLocation: "Lotte Mart Grocery - Puri Indah",
       shoppingDate: APP_STATE.sessionDate || getTodayDateString(),
-      category: "Sembako",
-      quantity: 2,
-      unit: "pcs",
-      unitPrice: 38000,
-      discount1: 10,
-      discount2: 0,
-      isBought: true
-    },
-    // 3. Susu UHT Ultra Milk 1000ml tanggal sebelumnya di Lotte Mart (Rp 23.500)
-    {
-      name: "Susu UHT Ultra Milk 1000ml",
-      store: "Lotte Mart Grocery - Puri Indah",
-      storeLocation: "Lotte Mart Grocery - Puri Indah",
-      shoppingDate: "2026-11-05",
       category: "Susu & Olahan",
       quantity: 1,
-      unit: "pack",
-      unitPrice: 23500,
+      unit: "kg",
+      unitPrice: 28000,
       discount1: 0,
       discount2: 0,
       isBought: true
     },
-    // 4. Susu UHT Ultra Milk 1000ml promo 50%+20% hari ini (Harga turun ↓)
+    // 3. SRS F-04: Garam 500g (Bulan lalu Rp 5.000 -> Sekarang Rp 5.000: Tanda Setara =)
     {
-      name: "Susu UHT Ultra Milk 1000ml",
+      name: "Garam 500g",
       store: "Lotte Mart Grocery - Puri Indah",
       storeLocation: "Lotte Mart Grocery - Puri Indah",
       shoppingDate: APP_STATE.sessionDate || getTodayDateString(),
-      category: "Susu & Olahan",
-      quantity: 3,
-      unit: "pack",
-      unitPrice: 21000,
-      discount1: 50,
-      discount2: 20, // Diskon ganda bertingkat F-03 (50% + 20%)
+      category: "Bumbu Dapur",
+      quantity: 1,
+      unit: "gr",
+      unitPrice: 5000,
+      discount1: 0,
+      discount2: 0,
+      isBought: true
+    },
+    // 4. SRS F-02: Minyak Goreng 2L (Kuantitas 1 = Rp 43.000, ubah ke qty 3 langsung jadi Rp 129.000)
+    {
+      name: "Minyak Goreng 2L",
+      store: "Lotte Mart Grocery - Puri Indah",
+      storeLocation: "Lotte Mart Grocery - Puri Indah",
+      shoppingDate: APP_STATE.sessionDate || getTodayDateString(),
+      category: "Bahan Pokok",
+      quantity: 1,
+      unit: "botol",
+      unitPrice: 43000,
+      discount1: 0,
+      discount2: 0,
       isBought: false
     },
-    // 5a. Beras Ramos 5kg tanggal sebelumnya di Lotte Mart (Rp 74.000)
+    // 5. SRS F-03: Wajan Anti Lengket promo kompound 50% + 20% (Rp 100.000 -> Tepat Rp 40.000)
     {
-      name: "Beras Premium Ramos 5kg",
-      store: "Lotte Mart Grocery - Puri Indah",
-      storeLocation: "Lotte Mart Grocery - Puri Indah",
-      shoppingDate: "2026-11-01",
-      category: "Sembako",
-      quantity: 1,
-      unit: "pack",
-      unitPrice: 74000,
-      discount1: 0,
-      discount2: 0,
-      isBought: true
-    },
-    // 5b. Beras Ramos 5kg tanggal hari ini di Lotte Mart (Rp 74.000 -> Tanda Setara =)
-    {
-      name: "Beras Premium Ramos 5kg",
+      name: "Wajan Anti Lengket",
       store: "Lotte Mart Grocery - Puri Indah",
       storeLocation: "Lotte Mart Grocery - Puri Indah",
       shoppingDate: APP_STATE.sessionDate || getTodayDateString(),
-      category: "Sembako",
-      quantity: 1,
-      unit: "pack",
-      unitPrice: 74000,
-      discount1: 0,
-      discount2: 0,
-      isBought: true
-    },
-    // 6. Sabun Cuci Piring di Toko Lain (Superindo)
-    {
-      name: "Sabun Cuci Piring Sunlight 750ml",
-      store: "Superindo",
-      storeLocation: "Superindo",
-      shoppingDate: "2026-11-12",
       category: "Kebutuhan Rumah",
-      quantity: 2,
-      unit: "pouch",
-      unitPrice: 17500,
-      discount1: 20,
+      quantity: 1,
+      unit: "pcs",
+      unitPrice: 100000,
+      discount1: 50,
+      discount2: 20, // Diskon ganda bertingkat kompound F-03
+      isBought: false
+    },
+    // 6. SRS F-03: Sabun Cuci promo diskon tunggal 25% (Rp 20.000 -> Rp 15.000)
+    {
+      name: "Sabun Cuci",
+      store: "Lotte Mart Grocery - Puri Indah",
+      storeLocation: "Lotte Mart Grocery - Puri Indah",
+      shoppingDate: APP_STATE.sessionDate || getTodayDateString(),
+      category: "Kebutuhan Rumah",
+      quantity: 1,
+      unit: "bungkus",
+      unitPrice: 20000,
+      discount1: 25,
       discount2: 0,
       isBought: false
     }
   ];
 
-  showToast('Memuat data contoh belanjaan studi kasus Rian...', 'warning');
+  showToast('Memuat data contoh belanjaan studi kasus DT2 Rian...', 'warning');
 
   const demoItems = [];
   const now = Date.now();
@@ -1951,8 +1985,20 @@ const setupEventListeners = () => {
       const discount1 = Number(dom.inputDiscount1.value) || 0;
       const discount2 = Number(dom.inputDiscount2.value) || 0;
 
-      if (!name || !storeLocation || unitPrice <= 0) {
-        showToast('Harap lengkapi nama barang, lokasi toko, dan harga satuan!', 'danger');
+      // Validasi Form Tegas Sesuai DT2 Skenario 1 (Tolak input kosong & harga minus)
+      if (!name) {
+        showToast('Nama barang belanja wajib diisi!', 'danger');
+        if (dom.inputItemName) dom.inputItemName.focus();
+        return;
+      }
+      if (unitPrice <= 0) {
+        showToast('Harga satuan harus lebih besar dari Rp 0 (tidak boleh Rp 0 atau harga minus)!', 'danger');
+        if (dom.inputUnitPrice) dom.inputUnitPrice.focus();
+        return;
+      }
+      if (!storeLocation) {
+        showToast('Lokasi supermarket belanja wajib dipilih atau diisi!', 'danger');
+        if (dom.inputStoreName) dom.inputStoreName.focus();
         return;
       }
 
@@ -2174,6 +2220,17 @@ const setupEventListeners = () => {
       if (dom.settingsModal) dom.settingsModal.classList.remove('active');
     });
   }
+
+  // Preset Limit Dompet di Modal Pengaturan (F-05)
+  document.querySelectorAll('.btn-budget-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playSound('click');
+      const amt = Number(btn.dataset.amount);
+      if (amt && dom.inputBudgetCapSetting) {
+        dom.inputBudgetCapSetting.value = amt;
+      }
+    });
+  });
 
   // Simpan Batas Anggaran (walletLimit) ke LocalStorage & Cloud Firestore
   if (dom.btnSaveBudgetCap) {
