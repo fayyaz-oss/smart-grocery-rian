@@ -24,8 +24,8 @@ const firebaseConfig = {
 // SHARED FIRESTORE SESSION DOCUMENT (HP & PC Realtime Sync)
 // ========================================================
 const FIRESTORE_SESSION = {
-  COLLECTION: 'shopping_sessions',
-  DOC_ID: 'rian_active_session'
+  COLLECTION: 'sessions',
+  DOC_ID: 'rian_main_session'
 };
 
 // Date Helpers
@@ -1067,13 +1067,13 @@ const updateItemQuantity = async (itemId, delta) => {
   updateBudgetSafetyDisplay();
   renderGroceryList();
 
-  // Sinkronisasi realtime ke dokumen bersama shopping_sessions/rian_active_session
+  // Sinkronisasi realtime ke dokumen bersama sessions/rian_main_session
   await syncSessionToFirestore();
 };
 
 /**
  * Add or Update Grocery Item
- * Menyimpan barang ke dokumen bersama Firestore shopping_sessions/rian_active_session
+ * Menyimpan barang ke dokumen bersama Firestore sessions/rian_main_session
  */
 const saveItem = async (itemData) => {
   const isEditing = Boolean(itemData.id);
@@ -1112,7 +1112,7 @@ const saveItem = async (itemData) => {
   playSound('success');
   showToast(isEditing ? 'Barang berhasil diperbarui!' : 'Barang ditambahkan ke daftar!', 'success');
 
-  // Kirim pembaruan ke Firestore shopping_sessions/rian_active_session
+  // Kirim pembaruan ke Firestore sessions/rian_main_session
   await syncSessionToFirestore();
 };
 
@@ -1128,7 +1128,7 @@ const deleteItem = async (itemId) => {
   renderGroceryList();
   showToast('Barang berhasil dihapus!', 'success');
 
-  // Kirim pembaruan ke Firestore shopping_sessions/rian_active_session
+  // Kirim pembaruan ke Firestore sessions/rian_main_session
   await syncSessionToFirestore();
 };
 
@@ -1153,7 +1153,7 @@ const toggleBoughtStatus = async (itemId) => {
   updateBudgetSafetyDisplay();
   renderGroceryList();
 
-  // Kirim pembaruan ke Firestore shopping_sessions/rian_active_session
+  // Kirim pembaruan ke Firestore sessions/rian_main_session
   await syncSessionToFirestore();
 };
 
@@ -1182,12 +1182,12 @@ const setConnectionStatus = (status, text) => {
 
 /**
  * Sinkronisasi seluruh state sesi belanja ke SATU ID dokumen Firestore bersama:
- * shopping_sessions/rian_active_session
+ * sessions/rian_main_session
  * Memastikan baik HP maupun PC membaca dan menulis ke satu sumber data yang sama persis
  */
 const syncSessionToFirestore = async (customPayload = {}) => {
   if (!db) {
-    console.warn('[Firestore] db belum aktif, update disimpan di LocalStorage.');
+    console.warn('[Firestore] db belum aktif, pembaruan disimpan ke LocalStorage.');
     return;
   }
   try {
@@ -1197,10 +1197,10 @@ const syncSessionToFirestore = async (customPayload = {}) => {
 
     const payload = {
       items: APP_STATE.items,
-      budgetCap: APP_STATE.budgetCap,
       walletLimit: APP_STATE.budgetCap,
-      activeLocation: APP_STATE.sessionStore,
+      budgetCap: APP_STATE.budgetCap,
       storeLocation: APP_STATE.sessionStore,
+      activeLocation: APP_STATE.sessionStore,
       shoppingDate: APP_STATE.sessionDate,
       customLocations: APP_STATE.customLocations,
       calcMode: APP_STATE.calcMode,
@@ -1210,11 +1210,18 @@ const syncSessionToFirestore = async (customPayload = {}) => {
 
     const sessionDocRef = db.collection(FIRESTORE_SESSION.COLLECTION).doc(FIRESTORE_SESSION.DOC_ID);
     await sessionDocRef.set(payload, { merge: true });
-    console.log('[Firestore] Berhasil update realtime ke:', `${FIRESTORE_SESSION.COLLECTION}/${FIRESTORE_SESSION.DOC_ID}`);
+    setConnectionStatus('online', 'Realtime Cloud Firestore Aktif');
+    console.log('[Firestore] Berhasil sinkronisasi (setDoc) ke:', `${FIRESTORE_SESSION.COLLECTION}/${FIRESTORE_SESSION.DOC_ID}`);
   } catch (err) {
-    console.error('[Firestore] Gagal menyimpan ke session Firestore:', err);
+    console.error('[Firestore setDoc Error]: Gagal menyimpan ke session Firestore:', err);
+    setConnectionStatus('offline', 'Mode Offline (Gagal Sinkronisasi Cloud)');
     if (err && err.code === 'permission-denied') {
-      console.error('[Firestore Security Rules Error]: Izin ditolak (permission-denied). Periksa konfigurasi Rules di Firebase Console agar: allow read, write: if true;');
+      const errorMsg = 'Akses Firestore DITOLAK (permission-denied). Periksa Security Rules di Firebase Console!';
+      console.error(errorMsg);
+      showToast(errorMsg, 'danger', 6000);
+      alert('PERINGATAN FIREBASE:\nAkses ke Cloud Firestore Ditolak (permission-denied).\n\nSolusi: Buka Firebase Console -> Firestore Database -> Rules, lalu ubah menjadi:\nallow read, write: if true;');
+    } else {
+      showToast(`Gagal sinkronisasi ke Cloud: ${err.message || 'Koneksi terputus'}`, 'warning', 4000);
     }
   }
 };
@@ -1242,7 +1249,7 @@ const initFirebaseRealtime = async () => {
 
     db = firebase.firestore();
 
-    // Setup Listener Realtime onSnapshot pada dokumen bersama shopping_sessions/rian_active_session
+    // Setup Listener Realtime onSnapshot pada dokumen bersama sessions/rian_main_session
     if (unsubscribeSnapshot) {
       unsubscribeSnapshot();
     }
@@ -1256,18 +1263,35 @@ const initFirebaseRealtime = async () => {
 
         let shouldUpdateUI = false;
 
-        // 1. Sinkronisasi Daftar Item Belanjaan
+        // 1. SINKRONISASI DAFTAR ITEM BELANJAAN (PERBAIKAN RACE CONDITION / DATA HILANG SAAT RELOAD)
         if (Array.isArray(data.items)) {
-          APP_STATE.items = data.items;
-          saveItemsLocally();
-          updatePriceHistoryMap(APP_STATE.items);
-          shouldUpdateUI = true;
+          if (data.items.length > 0) {
+            // Firestore memiliki data valid -> update data lokal
+            APP_STATE.items = data.items;
+            saveItemsLocally();
+            updatePriceHistoryMap(APP_STATE.items);
+            shouldUpdateUI = true;
+          } else if (data.items.length === 0 && APP_STATE.items.length > 0) {
+            // FIX RACE CONDITION: Dokumen di Firestore masih kosong [] padahal lokal memiliki data belanjaan yang sah!
+            // JANGAN timpa data lokal dengan []. Sebaliknya, sinkronkan data lokal yang sudah ada ke Firestore.
+            console.log('[Firestore] Mempertahankan data lokal dan mengunggah ke sesi Cloud Firestore...');
+            syncSessionToFirestore();
+          } else if (data.items.length === 0 && APP_STATE.items.length === 0) {
+            // Memang kedua sisi kosong
+            APP_STATE.items = [];
+            saveItemsLocally();
+            shouldUpdateUI = true;
+          }
+        } else if (!data.items && APP_STATE.items.length > 0) {
+          // Dokumen ada tapi field items belum ada -> unggah data lokal
+          syncSessionToFirestore();
         }
 
-        // 2. Sinkronisasi Limit Anggaran (Safety Cap)
-        if (data.budgetCap || data.walletLimit) {
-          const newCap = Number(data.budgetCap || data.walletLimit);
-          if (newCap !== APP_STATE.budgetCap) {
+        // 2. Sinkronisasi Limit Anggaran (Safety Cap / walletLimit)
+        const remoteLimit = data.walletLimit !== undefined ? data.walletLimit : data.budgetCap;
+        if (remoteLimit !== undefined) {
+          const newCap = Number(remoteLimit);
+          if (!isNaN(newCap) && newCap > 0 && newCap !== APP_STATE.budgetCap) {
             APP_STATE.budgetCap = newCap;
             try {
               localStorage.setItem(STORAGE_KEYS.BUDGET, String(newCap));
@@ -1279,7 +1303,7 @@ const initFirebaseRealtime = async () => {
         }
 
         // 3. Sinkronisasi Lokasi Supermarket Aktif
-        const newLoc = data.activeLocation || data.storeLocation;
+        const newLoc = data.storeLocation || data.activeLocation;
         if (newLoc && newLoc !== APP_STATE.sessionStore) {
           APP_STATE.sessionStore = newLoc;
           try {
@@ -1330,19 +1354,21 @@ const initFirebaseRealtime = async () => {
         }
         setConnectionStatus('online', 'Realtime Cloud Firestore Aktif');
       } else {
-        // Dokumen belum ada di Firestore -> buat sesi awal dengan data saat ini
-        console.log('[Firestore] Dokumen sesi bersama belum ada di Firestore, menginisialisasi...');
+        // Dokumen belum ada di Firestore -> buat dokumen awal dari data lokal yang ada saat ini
+        console.log('[Firestore] Dokumen sesi bersama belum ada di Firestore, menginisialisasi dengan data lokal...');
         syncSessionToFirestore();
         setConnectionStatus('online', 'Realtime Cloud Firestore Aktif');
       }
     }, (error) => {
       console.error('[Firestore onSnapshot Error]:', error);
+      setConnectionStatus('offline', 'Mode Offline (Gagal Terhubung Cloud)');
       if (error && error.code === 'permission-denied') {
-        console.error('[Firestore Security Rules Error]: Akses ditolak (permission-denied). Periksa apakah Security Rules di Firebase Console mengizinkan: allow read, write: if true;');
-        showToast('Izin akses Firestore ditolak (Periksa Security Rules)', 'danger', 5000);
-      }
-      if (!navigator.onLine) {
-        setConnectionStatus('offline', 'Mode Offline (LocalStorage)');
+        const errorMsg = 'Akses listener Firestore DITOLAK (permission-denied). Periksa Security Rules di Firebase Console!';
+        console.error(errorMsg);
+        showToast(errorMsg, 'danger', 6000);
+        alert('PERINGATAN FIREBASE:\nListener Realtime Firestore Ditolak (permission-denied).\n\nSolusi: Buka Firebase Console -> Firestore Database -> Rules, lalu ubah menjadi:\nallow read, write: if true;');
+      } else {
+        showToast('Koneksi Firestore terganggu, menggunakan cadangan lokal.', 'warning', 3500);
       }
       loadItemsFromLocalStorage();
       updatePriceHistoryMap(APP_STATE.items);
@@ -2146,7 +2172,7 @@ const setupEventListeners = () => {
 
   // Simpan Batas Anggaran (walletLimit) ke LocalStorage & Cloud Firestore
   if (dom.btnSaveBudgetCap) {
-    dom.btnSaveBudgetCap.addEventListener('click', () => {
+    dom.btnSaveBudgetCap.addEventListener('click', async () => {
       const val = Number(dom.inputBudgetCapSetting.value) || 400000;
       if (val <= 0) {
         showToast('Limit dompet harus lebih besar dari 0!', 'danger');
@@ -2157,8 +2183,9 @@ const setupEventListeners = () => {
         localStorage.setItem(STORAGE_KEYS.BUDGET, val.toString());
         localStorage.setItem(STORAGE_KEYS.WALLET_LIMIT, val.toString());
       } catch (e) {}
+      saveItemsLocally();
       updateBudgetSafetyDisplay();
-      syncSessionToFirestore({ budgetCap: val, walletLimit: val });
+      await syncSessionToFirestore({ walletLimit: val, budgetCap: val, items: APP_STATE.items });
       showToast(`Batas limit dompet berhasil diubah ke ${formatRupiah(val)}!`, 'success');
       if (dom.settingsModal) dom.settingsModal.classList.remove('active');
     });
