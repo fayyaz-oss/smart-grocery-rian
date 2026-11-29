@@ -235,6 +235,11 @@
         <button id="btnToggleBgm" class="icon-btn" title="Putar Musik Latar (Kevin MacLeod)" aria-label="Toggle Musik Latar">
           <i class="fa-solid fa-volume-xmark" id="mainBgmIcon"></i>
         </button>
+        <!-- TikTok Vouchers Collection Trigger -->
+        <button id="btnOpenVouchers" class="icon-btn btn-voucher-trigger" title="Koleksi Voucher TikTok Saya" aria-label="Koleksi Voucher TikTok">
+          <i class="fa-solid fa-ticket"></i>
+          <span id="voucherBadgeCount" class="voucher-badge-counter hidden">0</span>
+        </button>
         <!-- Theme Toggle Button -->
         <button id="btnToggleTheme" class="icon-btn" title="Ganti Tema Tampilan" aria-label="Ganti Tema">
           <i class="fa-solid fa-moon" id="themeIcon"></i>
@@ -962,6 +967,78 @@
         <button type="button" id="btnConfirmFbLogin" class="btn-facebook-confirm">
           <i class="fa-brands fa-facebook"></i> Lanjutkan sebagai Fayyaz
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confetti Container for Gamification Celebrations -->
+  <div id="confettiContainer" class="confetti-container" aria-hidden="true"></div>
+
+  <!-- Modal Reward Voucher TikTok (Gamifikasi Saat Barang Dicentang) -->
+  <div id="tiktokRewardModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-sheet tiktok-modal-sheet" role="dialog" aria-labelledby="tiktokRewardTitle">
+      <div class="tiktok-reward-header">
+        <div class="tiktok-logo-badge">
+          <i class="fa-brands fa-tiktok"></i>
+        </div>
+        <h3 id="tiktokRewardTitle">Selamat! Kamu Dapat Voucher TikTok 🎉</h3>
+        <p id="tiktokRewardDesc" class="tiktok-reward-subtitle">Hadiah belanja cerdas untuk barang yang baru saja kamu beli!</p>
+      </div>
+
+      <div class="tiktok-voucher-ticket">
+        <div class="ticket-notch ticket-notch-left"></div>
+        <div class="ticket-notch ticket-notch-right"></div>
+        <div class="ticket-brand">
+          <span class="platform-tag"><i class="fa-brands fa-tiktok"></i> TikTok Shop Grocery</span>
+          <span class="badge-verified"><i class="fa-solid fa-circle-check"></i> Hadiah Resmi</span>
+        </div>
+        <div class="ticket-content">
+          <h4 id="rewardVoucherDiscount" class="ticket-discount">Diskon Rp 20.000</h4>
+          <span id="rewardVoucherMin" class="ticket-min-spend">Min. Belanja Rp 50.000</span>
+          <p id="rewardVoucherDesc" class="ticket-desc">Spesial Grocery Belanja Hemat Mahasiswa</p>
+        </div>
+        <div class="ticket-dash-divider"></div>
+        <div class="ticket-code-row">
+          <div class="ticket-code-info">
+            <span class="ticket-code-label">KODE VOUCHER TIKTOK:</span>
+            <div id="rewardVoucherCode" class="ticket-code-display">TIKTOKHEMAT20K</div>
+          </div>
+          <button type="button" id="btnCopyRewardCode" class="btn-copy-ticket" title="Salin Kode Voucher">
+            <i class="fa-regular fa-copy"></i> Salin
+          </button>
+        </div>
+      </div>
+
+      <div class="tiktok-reward-footer">
+        <button type="button" id="btnViewAllVouchersFromReward" class="btn-secondary btn-collection-shortcut">
+          <i class="fa-solid fa-ticket"></i> Lihat Koleksi Voucher
+        </button>
+        <button type="button" id="btnCloseTikTokReward" class="btn-primary btn-claim-ok">
+          <i class="fa-solid fa-check"></i> Siap, Lanjut Belanja
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Koleksi Voucher TikTok Saya -->
+  <div id="vouchersListModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-sheet" role="dialog" aria-labelledby="vouchersListTitle">
+      <div class="modal-header">
+        <div class="modal-header-icon bg-rose-light">
+          <i class="fa-solid fa-ticket text-rose"></i>
+        </div>
+        <div class="modal-header-title">
+          <h3 id="vouchersListTitle">Koleksi Voucher TikTok Saya</h3>
+          <p>Daftar reward yang berhasil kamu kumpulkan dari belanjaan</p>
+        </div>
+        <button type="button" class="btn-modal-close" id="btnCloseVouchersList" aria-label="Tutup">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="settings-modal-body vouchers-modal-body">
+        <div id="vouchersListContainer" class="vouchers-list-container">
+          <!-- Rendered dynamically -->
+        </div>
       </div>
     </div>
   </div>

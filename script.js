@@ -71,7 +71,8 @@ const STORAGE_KEYS = {
   SOUND: 'smart_grocery_sound_enabled',
   CUSTOM_LOCATIONS: 'smart_grocery_custom_locations',
   AUTH_USER: 'smart_grocery_auth_user',
-  BGM_ENABLED: 'smart_grocery_bgm_enabled'
+  BGM_ENABLED: 'smart_grocery_bgm_enabled',
+  VOUCHERS: 'smart_grocery_tiktok_vouchers'
 };
 
 // Global App State
@@ -92,7 +93,9 @@ const APP_STATE = {
   customLocations: [],
   currentUser: null,
   authMode: 'login', // 'login' or 'register'
-  bgmPlaying: false
+  bgmPlaying: false,
+  vouchers: [],
+  warnedItems: new Set()
 };
 
 // Firebase References
@@ -239,7 +242,24 @@ const initDom = () => {
     btnResetAllData: document.getElementById('btnResetAllData'),
 
     // Toast
-    toastContainer: document.getElementById('toastContainer')
+    toastContainer: document.getElementById('toastContainer'),
+
+    // Gamifikasi: TikTok Vouchers & Countdown
+    btnOpenVouchers: document.getElementById('btnOpenVouchers'),
+    voucherBadgeCount: document.getElementById('voucherBadgeCount'),
+    tiktokRewardModal: document.getElementById('tiktokRewardModal'),
+    rewardVoucherCode: document.getElementById('rewardVoucherCode'),
+    rewardVoucherDiscount: document.getElementById('rewardVoucherDiscount'),
+    rewardVoucherMin: document.getElementById('rewardVoucherMin'),
+    rewardVoucherDesc: document.getElementById('rewardVoucherDesc'),
+    tiktokRewardDesc: document.getElementById('tiktokRewardDesc'),
+    btnCopyRewardCode: document.getElementById('btnCopyRewardCode'),
+    btnCloseTikTokReward: document.getElementById('btnCloseTikTokReward'),
+    btnViewAllVouchersFromReward: document.getElementById('btnViewAllVouchersFromReward'),
+    vouchersListModal: document.getElementById('vouchersListModal'),
+    btnCloseVouchersList: document.getElementById('btnCloseVouchersList'),
+    vouchersListContainer: document.getElementById('vouchersListContainer'),
+    confettiContainer: document.getElementById('confettiContainer')
   };
 };
 
@@ -1154,6 +1174,16 @@ const renderGroceryList = () => {
       `;
     }
 
+    // Gamifikasi: Perhitungan Countdown Waktu Tunggu 15 Menit
+    if (!item.isBought && !item.expiresAt) {
+      item.expiresAt = Date.now() + (15 * 60 * 1000);
+    }
+    const remainingMs = item.isBought ? 0 : Math.max(0, (item.expiresAt || (Date.now() + 15 * 60 * 1000)) - Date.now());
+    const isUrgent = !item.isBought && remainingMs <= 180000;
+    const mins = Math.floor(remainingMs / 60000);
+    const secs = Math.floor((remainingMs % 60000) / 1000);
+    const formattedCountdown = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
     return `
       <div class="grocery-item-card ${item.isBought ? 'is-bought' : ''}" data-id="${item.id}">
         <div class="card-row-top">
@@ -1179,6 +1209,23 @@ const renderGroceryList = () => {
             </div>
 
             <h3 class="item-title">${escapeHtml(item.name)}</h3>
+
+            <!-- Countdown Timer Pill for Unbought Items / Status for Bought Items -->
+            ${!item.isBought ? `
+              <div class="item-countdown-pill ${isUrgent ? 'urgent-warning' : ''}" id="countdown-wrap-${item.id}">
+                <span class="countdown-timer-text">
+                  <i class="fa-solid fa-stopwatch ${isUrgent ? 'fa-beat' : ''}"></i>
+                  <span id="timer-display-${item.id}">${formattedCountdown}</span>
+                </span>
+                <button type="button" class="btn-extend-countdown" data-action="extend-timer" data-id="${item.id}" title="Perpanjang batas waktu tunggu +15 menit">
+                  <i class="fa-solid fa-clock-rotate-left"></i> +15m
+                </button>
+              </div>
+            ` : `
+              <div class="item-countdown-pill bought-status">
+                <i class="fa-solid fa-circle-check"></i> Sudah Dibeli &bull; Klaim Voucher
+              </div>
+            `}
 
             <div class="item-meta-price">
               <span>${item.quantity} ${escapeHtml(item.unit || 'pcs')} &times; ${hasDiscount ? `<span class="strikethrough">${unitPriceDisplay}</span> <strong class="text-emerald">${effectiveUnitPriceDisplay}</strong>` : `<strong>${unitPriceDisplay}</strong>`}</span>
@@ -1333,6 +1380,7 @@ const saveItem = async (itemData) => {
       ...itemData,
       id: `item_${now}_${Math.random().toString(36).substr(2, 6)}`,
       walletLimit: APP_STATE.budgetCap,
+      expiresAt: now + (15 * 60 * 1000),
       createdAt: now,
       updatedAt: now
     };
@@ -1356,6 +1404,7 @@ const saveItem = async (itemData) => {
 const deleteItem = async (itemId) => {
   playSound('delete');
   APP_STATE.items = APP_STATE.items.filter(i => i.id !== itemId);
+  APP_STATE.warnedItems.delete(itemId);
   saveItemsLocally();
   updatePriceHistoryMap(APP_STATE.items);
   updateBudgetSafetyDisplay();
@@ -1379,8 +1428,15 @@ const toggleBoughtStatus = async (itemId) => {
 
   if (newStatus) {
     playSound('success');
+    // Gamifikasi: Hadiah Voucher TikTok saat barang sudah dibeli
+    grantTikTokReward(item);
   } else {
     playSound('click');
+    // Jika dibatalkan dari sudah dibeli, reset countdown 15 menit
+    if (!item.expiresAt || item.expiresAt <= Date.now()) {
+      item.expiresAt = Date.now() + (15 * 60 * 1000);
+      APP_STATE.warnedItems.delete(item.id);
+    }
   }
 
   saveItemsLocally();
@@ -1924,6 +1980,7 @@ const loadDemoGroceryData = async () => {
       ...item,
       id: `item_demo_${now}_${index}`,
       walletLimit: APP_STATE.budgetCap,
+      expiresAt: now + (15 * 60 * 1000),
       discountedUnitPrice: discCalc.finalUnitPrice,
       unitSaved: discCalc.savedUnitPrice,
       subtotal: discCalc.finalUnitPrice * item.quantity,
@@ -2643,6 +2700,9 @@ const setupEventListeners = () => {
         // DT2 Kriteria 1: Tombol + 44x44px langsung update detik itu juga
         playSound('click');
         await updateItemQuantity(itemId, 1);
+      } else if (action === 'extend-timer') {
+        playSound('click');
+        await extendItemCountdown(itemId);
       }
     });
   }
@@ -2831,6 +2891,52 @@ const setupEventListeners = () => {
   // Demo Data Button
   if (dom.btnLoadDemoData) dom.btnLoadDemoData.addEventListener('click', loadDemoGroceryData);
 
+  // Gamifikasi: TikTok Voucher Modals Listeners
+  if (dom.btnOpenVouchers) {
+    dom.btnOpenVouchers.addEventListener('click', () => {
+      playSound('click');
+      renderVouchersList();
+      if (dom.vouchersListModal) dom.vouchersListModal.classList.add('active');
+    });
+  }
+
+  if (dom.btnCloseVouchersList) {
+    dom.btnCloseVouchersList.addEventListener('click', () => {
+      if (dom.vouchersListModal) dom.vouchersListModal.classList.remove('active');
+    });
+  }
+
+  if (dom.btnCloseTikTokReward) {
+    dom.btnCloseTikTokReward.addEventListener('click', () => {
+      if (dom.tiktokRewardModal) dom.tiktokRewardModal.classList.remove('active');
+    });
+  }
+
+  if (dom.btnViewAllVouchersFromReward) {
+    dom.btnViewAllVouchersFromReward.addEventListener('click', () => {
+      if (dom.tiktokRewardModal) dom.tiktokRewardModal.classList.remove('active');
+      renderVouchersList();
+      if (dom.vouchersListModal) dom.vouchersListModal.classList.add('active');
+    });
+  }
+
+  if (dom.btnCopyRewardCode) {
+    dom.btnCopyRewardCode.addEventListener('click', () => {
+      const code = _lastGrantedVoucher ? _lastGrantedVoucher.code : (document.getElementById('rewardVoucherCode')?.textContent || '');
+      if (code) copyToClipboard(code, dom.btnCopyRewardCode);
+    });
+  }
+
+  if (dom.vouchersListContainer) {
+    dom.vouchersListContainer.addEventListener('click', (e) => {
+      const copyBtn = e.target.closest('[data-copy-code]');
+      if (copyBtn) {
+        const code = copyBtn.dataset.copyCode;
+        if (code) copyToClipboard(code, copyBtn);
+      }
+    });
+  }
+
   // Close Modals on Overlay Click
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {
@@ -2855,7 +2961,253 @@ const setupEventListeners = () => {
 };
 
 // ========================================================
-// 15. SERVICE WORKER REGISTRATION (PWA)
+// 15. GAMIFIKASI 1: COUNTDOWN & AUTO-REMOVE BARANG TUNGGU
+// ========================================================
+const formatMinutesSeconds = (ms) => {
+  const safeMs = Math.max(0, ms);
+  const mins = Math.floor(safeMs / 60000);
+  const secs = Math.floor((safeMs % 60000) / 1000);
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+
+const extendItemCountdown = async (itemId) => {
+  const item = APP_STATE.items.find(i => i.id === itemId);
+  if (!item) return;
+
+  const currentExpiry = item.expiresAt || Date.now();
+  item.expiresAt = Math.max(currentExpiry, Date.now()) + (15 * 60 * 1000);
+  APP_STATE.warnedItems.delete(itemId);
+
+  saveItemsLocally();
+  renderGroceryList();
+  await syncSessionToFirestore();
+
+  playSound('success');
+  showToast(`Waktu tunggu "${item.name}" berhasil diperpanjang +15 menit! ⏳`, 'success', 2500);
+};
+
+const handleItemAutoExpired = async (item) => {
+  APP_STATE.items = APP_STATE.items.filter(i => i.id !== item.id);
+  APP_STATE.warnedItems.delete(item.id);
+
+  saveItemsLocally();
+  updatePriceHistoryMap(APP_STATE.items);
+  updateBudgetSafetyDisplay();
+  renderGroceryList();
+  await syncSessionToFirestore();
+
+  playSound('delete');
+  showToast(`⚠️ Peringatan: Barang "${item.name}" telah kedaluwarsa (15 menit) dan otomatis dihapus dari daftar tunggu.`, 'danger', 4500);
+};
+
+let _countdownInterval = null;
+const startCountdownTimer = () => {
+  if (_countdownInterval) clearInterval(_countdownInterval);
+  _countdownInterval = setInterval(() => {
+    const now = Date.now();
+
+    for (let i = APP_STATE.items.length - 1; i >= 0; i--) {
+      const item = APP_STATE.items[i];
+      if (item.isBought) continue;
+
+      if (!item.expiresAt) {
+        item.expiresAt = now + (15 * 60 * 1000);
+      }
+
+      const remainingMs = item.expiresAt - now;
+
+      // 1. Kedaluwarsa (00:00)
+      if (remainingMs <= 0) {
+        handleItemAutoExpired(item);
+        return;
+      }
+
+      // 2. Warning jika < 3 menit (180.000 ms)
+      if (remainingMs <= 180000) {
+        if (!APP_STATE.warnedItems.has(item.id)) {
+          APP_STATE.warnedItems.add(item.id);
+          playSound('warning');
+          showToast(`⚠️ Peringatan! Barang "${item.name}" akan segera menghilang dari daftar tunggu (< 3 menit). Segera beli atau perpanjang waktu!`, 'warning', 5000);
+        }
+      }
+
+      // Update badge UI real-time
+      const timerEl = document.getElementById(`timer-display-${item.id}`);
+      if (timerEl) {
+        timerEl.textContent = formatMinutesSeconds(remainingMs);
+      }
+      const wrapEl = document.getElementById(`countdown-wrap-${item.id}`);
+      if (wrapEl) {
+        wrapEl.classList.toggle('urgent-warning', remainingMs <= 180000);
+      }
+    }
+  }, 1000);
+};
+
+// ========================================================
+// 16. GAMIFIKASI 2: REWARD VOUCHER TIKTOK & KOLEKSI
+// ========================================================
+const TIKTOK_VOUCHER_POOL = [
+  { code: 'TIKTOKHEMAT20K', discount: 'Diskon Rp 20.000', minSpend: 'Min. Belanja Rp 50.000', desc: 'Spesial Grocery Belanja Hemat Mahasiswa' },
+  { code: 'TTGROCERY15', discount: 'Cashback 15%', minSpend: 'Maks. Rp 30.000', desc: 'Voucher TikTok Shop Mart Resmi' },
+  { code: 'RIANCUAN50', discount: 'Potongan Rp 50.000', minSpend: 'Min. Belanja Rp 100.000', desc: 'Hadiah Mahasiswa Rantau Budget Pintar' },
+  { code: 'BELANJATT25', discount: 'Diskon Rp 25.000', minSpend: 'Min. Belanja Rp 60.000', desc: 'Voucher Eksklusif Pengguna Aktif TikTok' },
+  { code: 'TIKTOKPEDIA10', discount: 'Gratis Ongkir + Diskon 10%', minSpend: 'Tanpa Minimum Belanja', desc: 'Voucher Kilat TikTok Shop Grocery' },
+  { code: 'LOTTE_TIKTOK35', discount: 'Cashback Ekstra Rp 35.000', minSpend: 'Min. Belanja Rp 80.000', desc: 'Kolaborasi Supermarket & TikTok Shop' }
+];
+
+const loadVouchersFromStorage = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.VOUCHERS);
+    if (raw) {
+      APP_STATE.vouchers = JSON.parse(raw);
+    } else {
+      APP_STATE.vouchers = [];
+    }
+  } catch(e) {
+    APP_STATE.vouchers = [];
+  }
+  updateVoucherBadge();
+};
+
+const saveVouchersLocally = () => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(APP_STATE.vouchers));
+  } catch(e) {}
+  updateVoucherBadge();
+};
+
+const updateVoucherBadge = () => {
+  const badge = document.getElementById('voucherBadgeCount');
+  if (!badge) return;
+  const count = APP_STATE.vouchers.length;
+  badge.textContent = count;
+  badge.classList.toggle('hidden', count === 0);
+};
+
+const launchConfetti = () => {
+  const container = document.getElementById('confettiContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  const colors = ['#FE2C55', '#25F4EE', '#10b981', '#f59e0b', '#38bdf8', '#ffffff'];
+  for (let i = 0; i < 42; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDelay = (Math.random() * 0.45) + 's';
+    piece.style.transform = `rotate(${Math.random() * 360}deg)`;
+    container.appendChild(piece);
+  }
+  setTimeout(() => {
+    container.innerHTML = '';
+  }, 3500);
+};
+
+let _lastGrantedVoucher = null;
+
+const grantTikTokReward = (item) => {
+  const template = TIKTOK_VOUCHER_POOL[Math.floor(Math.random() * TIKTOK_VOUCHER_POOL.length)];
+  const randomSuffix = Math.floor(10 + Math.random() * 90);
+  const uniqueCode = `${template.code}${randomSuffix}`;
+
+  const newVoucher = {
+    id: 'vouch_' + Date.now(),
+    code: uniqueCode,
+    discount: template.discount,
+    minSpend: template.minSpend,
+    desc: template.desc,
+    earnedFrom: item.name,
+    date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+  };
+
+  _lastGrantedVoucher = newVoucher;
+  APP_STATE.vouchers.unshift(newVoucher);
+  saveVouchersLocally();
+
+  // Populate modal
+  const codeEl = document.getElementById('rewardVoucherCode');
+  const discountEl = document.getElementById('rewardVoucherDiscount');
+  const minEl = document.getElementById('rewardVoucherMin');
+  const descEl = document.getElementById('rewardVoucherDesc');
+  const subtitleEl = document.getElementById('tiktokRewardDesc');
+
+  if (codeEl) codeEl.textContent = newVoucher.code;
+  if (discountEl) discountEl.textContent = newVoucher.discount;
+  if (minEl) minEl.textContent = newVoucher.minSpend;
+  if (descEl) descEl.textContent = newVoucher.desc;
+  if (subtitleEl) subtitleEl.innerHTML = `Hadiah belanja cerdas untuk barang: <strong>${escapeHtml(item.name)}</strong>`;
+
+  const copyBtn = document.getElementById('btnCopyRewardCode');
+  if (copyBtn) {
+    copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Salin';
+    copyBtn.classList.remove('copied');
+  }
+
+  // Show reward modal
+  const modal = document.getElementById('tiktokRewardModal');
+  if (modal) modal.classList.add('active');
+
+  // Trigger celebration effects
+  launchConfetti();
+  playSound('success');
+};
+
+const copyToClipboard = async (text, btnElement) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    if (btnElement) {
+      btnElement.innerHTML = '<i class="fa-solid fa-check"></i> Tersalin!';
+      btnElement.classList.add('copied');
+      setTimeout(() => {
+        btnElement.innerHTML = '<i class="fa-regular fa-copy"></i> Salin';
+        btnElement.classList.remove('copied');
+      }, 2000);
+    }
+    showToast(`Kode voucher "${text}" berhasil disalin ke clipboard! 📋`, 'success', 2200);
+  } catch (err) {
+    showToast(`Kode voucher: ${text}`, 'success');
+  }
+};
+
+const renderVouchersList = () => {
+  const container = document.getElementById('vouchersListContainer');
+  if (!container) return;
+
+  if (APP_STATE.vouchers.length === 0) {
+    container.innerHTML = `
+      <div class="empty-vouchers-state">
+        <i class="fa-solid fa-ticket"></i>
+        <h4>Belum Ada Voucher TikTok</h4>
+        <p>Centang barang belanjaan menjadi "Sudah Dibeli" untuk mendapatkan voucher diskon belanja TikTok Shop gratis!</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = APP_STATE.vouchers.map(v => `
+    <div class="tiktok-collection-card">
+      <div class="collection-card-header">
+        <span class="collection-platform"><i class="fa-brands fa-tiktok"></i> TikTok Shop Grocery</span>
+        <span class="collection-date">${escapeHtml(v.date)}</span>
+      </div>
+      <div class="collection-card-body">
+        <div class="collection-discount">${escapeHtml(v.discount)}</div>
+        <div class="collection-min">${escapeHtml(v.minSpend)} &bull; ${escapeHtml(v.desc)}</div>
+        <div class="collection-from">Didapat dari: <strong>${escapeHtml(v.earnedFrom)}</strong></div>
+      </div>
+      <div class="collection-card-footer">
+        <div class="collection-code">${escapeHtml(v.code)}</div>
+        <button type="button" class="btn-copy-collected" data-copy-code="${escapeHtml(v.code)}">
+          <i class="fa-regular fa-copy"></i> Salin
+        </button>
+      </div>
+    </div>
+  `).join('');
+};
+
+// ========================================================
+// 17. SERVICE WORKER REGISTRATION (PWA)
 // ========================================================
 const registerServiceWorker = () => {
   if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
@@ -2868,7 +3220,7 @@ const registerServiceWorker = () => {
 };
 
 // ========================================================
-// 16. APPLICATION BOOTSTRAP (Langsung Aktif Seketika)
+// 18. APPLICATION BOOTSTRAP (Langsung Aktif Seketika)
 // ========================================================
 const startApp = () => {
   // 1. Inisialisasi referensi elemen DOM
@@ -2881,6 +3233,10 @@ const startApp = () => {
 
   // 2b. Inisialisasi status autentikasi pengguna (Auth Guard)
   checkAuthSession();
+
+  // 2c. Inisialisasi gamifikasi: Muat koleksi voucher TikTok & aktifkan countdown timer
+  loadVouchersFromStorage();
+  startCountdownTimer();
 
   // 3. Muat lokasi kustom & perbarui dropdown serta quick chips
   loadCustomLocations();
