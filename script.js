@@ -20,6 +20,14 @@ const firebaseConfig = {
   measurementId: "G-MYG7Y4B6P1"
 };
 
+// ========================================================
+// SHARED FIRESTORE SESSION DOCUMENT (HP & PC Realtime Sync)
+// ========================================================
+const FIRESTORE_SESSION = {
+  COLLECTION: 'shopping_sessions',
+  DOC_ID: 'rian_active_session'
+};
+
 // Date Helpers
 const getTodayDateString = () => {
   const now = new Date();
@@ -1035,7 +1043,7 @@ const loadItemsFromLocalStorage = () => {
 
 /**
  * DT2 Kriteria 1: Ubah kuantitas langsung dari kartu item di daftar belanjaan
- * Subtotal dan total belanja ter-update detik itu juga
+ * Subtotal dan total belanja ter-update detik itu juga & langsung sync ke Firestore
  */
 const updateItemQuantity = async (itemId, delta) => {
   const item = APP_STATE.items.find(i => i.id === itemId);
@@ -1052,87 +1060,47 @@ const updateItemQuantity = async (itemId, delta) => {
   item.unitSaved = discCalc.savedUnitPrice;
   item.subtotal = discCalc.finalUnitPrice * newQty;
   item.totalSaved = discCalc.savedUnitPrice * newQty;
+  item.updatedAt = Date.now();
 
   // Update tampilan & kalkulasi lokal seketika tanpa jeda
   saveItemsLocally();
   updateBudgetSafetyDisplay();
   renderGroceryList();
 
-  // Sinkronisasi realtime ke Firestore di latar belakang
-  if (APP_STATE.isFirestoreActive && db && !itemId.startsWith('local_')) {
-    try {
-      const serverTimestamp = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
-        ? firebase.firestore.FieldValue.serverTimestamp()
-        : Date.now();
-
-      await db.collection('groceries').doc(itemId).update({
-        quantity: newQty,
-        discountedUnitPrice: item.discountedUnitPrice,
-        unitSaved: item.unitSaved,
-        subtotal: item.subtotal,
-        totalSaved: item.totalSaved,
-        updatedAt: serverTimestamp
-      });
-    } catch (err) {
-      console.warn('Firestore update quantity failed:', err);
-    }
-  }
+  // Sinkronisasi realtime ke dokumen bersama shopping_sessions/rian_active_session
+  await syncSessionToFirestore();
 };
 
 /**
  * Add or Update Grocery Item
- * Menyimpan metadata: storeLocation, shoppingDate, walletLimit ke Firestore & LocalStorage
+ * Menyimpan barang ke dokumen bersama Firestore shopping_sessions/rian_active_session
  */
 const saveItem = async (itemData) => {
   const isEditing = Boolean(itemData.id);
+  const now = Date.now();
 
-  if (APP_STATE.isFirestoreActive && db) {
-    try {
-      const serverTimestamp = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
-        ? firebase.firestore.FieldValue.serverTimestamp()
-        : Date.now();
-
-      if (isEditing) {
-        const { id, ...updateData } = itemData;
-        updateData.updatedAt = serverTimestamp;
-        updateData.walletLimit = APP_STATE.budgetCap;
-        await db.collection('groceries').doc(itemData.id).update(updateData);
-        playSound('success');
-        showToast('Barang berhasil diperbarui di Cloud!', 'success');
-      } else {
-        const createData = {
-          ...itemData,
-          walletLimit: APP_STATE.budgetCap,
-          createdAt: serverTimestamp,
-          updatedAt: serverTimestamp
-        };
-        await db.collection('groceries').add(createData);
-        playSound('success');
-        showToast('Barang berhasil disimpan ke Cloud Firestore!', 'success');
-      }
-      return;
-    } catch (err) {
-      console.error('Firestore write failed, falling back to LocalStorage:', err);
-      showToast('Gagal sinkron Cloud, disimpan ke LocalStorage', 'warning');
-      if (!navigator.onLine) {
-        setConnectionStatus('offline', 'Mode Offline (LocalStorage)');
-      }
-    }
-  }
-
-  // LocalStorage Fallback
   if (isEditing) {
     const index = APP_STATE.items.findIndex(i => i.id === itemData.id);
     if (index >= 0) {
-      APP_STATE.items[index] = { ...itemData, walletLimit: APP_STATE.budgetCap, updatedAt: Date.now() };
+      APP_STATE.items[index] = {
+        ...itemData,
+        walletLimit: APP_STATE.budgetCap,
+        updatedAt: now
+      };
+    } else {
+      APP_STATE.items.unshift({
+        ...itemData,
+        walletLimit: APP_STATE.budgetCap,
+        updatedAt: now
+      });
     }
   } else {
     const newItem = {
       ...itemData,
+      id: `item_${now}_${Math.random().toString(36).substr(2, 6)}`,
       walletLimit: APP_STATE.budgetCap,
-      id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
+      createdAt: now,
+      updatedAt: now
     };
     APP_STATE.items.unshift(newItem);
   }
@@ -1142,7 +1110,10 @@ const saveItem = async (itemData) => {
   updateBudgetSafetyDisplay();
   renderGroceryList();
   playSound('success');
-  showToast(isEditing ? 'Barang diperbarui (Lokal)' : 'Barang ditambahkan (Lokal)', 'success');
+  showToast(isEditing ? 'Barang berhasil diperbarui!' : 'Barang ditambahkan ke daftar!', 'success');
+
+  // Kirim pembaruan ke Firestore shopping_sessions/rian_active_session
+  await syncSessionToFirestore();
 };
 
 /**
@@ -1150,22 +1121,15 @@ const saveItem = async (itemData) => {
  */
 const deleteItem = async (itemId) => {
   playSound('delete');
-  if (APP_STATE.isFirestoreActive && db && !itemId.startsWith('local_')) {
-    try {
-      await db.collection('groceries').doc(itemId).delete();
-      showToast('Barang dihapus dari Cloud!', 'success');
-      return;
-    } catch (err) {
-      console.warn('Firestore delete failed, deleting locally:', err);
-    }
-  }
-
   APP_STATE.items = APP_STATE.items.filter(i => i.id !== itemId);
   saveItemsLocally();
   updatePriceHistoryMap(APP_STATE.items);
   updateBudgetSafetyDisplay();
   renderGroceryList();
   showToast('Barang berhasil dihapus!', 'success');
+
+  // Kirim pembaruan ke Firestore shopping_sessions/rian_active_session
+  await syncSessionToFirestore();
 };
 
 /**
@@ -1176,36 +1140,25 @@ const toggleBoughtStatus = async (itemId) => {
   if (!item) return;
 
   const newStatus = !item.isBought;
+  item.isBought = newStatus;
+  item.updatedAt = Date.now();
+
   if (newStatus) {
     playSound('success');
   } else {
     playSound('click');
   }
 
-  if (APP_STATE.isFirestoreActive && db && !itemId.startsWith('local_')) {
-    try {
-      const serverTimestamp = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
-        ? firebase.firestore.FieldValue.serverTimestamp()
-        : Date.now();
-
-      await db.collection('groceries').doc(itemId).update({
-        isBought: newStatus,
-        updatedAt: serverTimestamp
-      });
-      return;
-    } catch (err) {
-      console.warn('Firestore status toggle failed:', err);
-    }
-  }
-
-  item.isBought = newStatus;
   saveItemsLocally();
   updateBudgetSafetyDisplay();
   renderGroceryList();
+
+  // Kirim pembaruan ke Firestore shopping_sessions/rian_active_session
+  await syncSessionToFirestore();
 };
 
 // ========================================================
-// 9. FIREBASE REALTIME INITIALIZATION & CONFIG SYNC (DT2 Criterion 3)
+// 9. SHARED FIRESTORE SESSION SYNC & REALTIME LISTENER
 // ========================================================
 const setConnectionStatus = (status, text) => {
   // status: 'online' | 'connecting' | 'offline'
@@ -1228,37 +1181,48 @@ const setConnectionStatus = (status, text) => {
 };
 
 /**
- * Sinkronisasi metadata konfigurasi (activeLocation, storeLocation, shoppingDate, walletLimit, customLocations) ke Firestore
- * Memastikan sinkron realtime antar HP dan PC seketika
+ * Sinkronisasi seluruh state sesi belanja ke SATU ID dokumen Firestore bersama:
+ * shopping_sessions/rian_active_session
+ * Memastikan baik HP maupun PC membaca dan menulis ke satu sumber data yang sama persis
  */
-const syncConfigToFirestore = async (updates = {}) => {
-  if (!db) return;
+const syncSessionToFirestore = async (customPayload = {}) => {
+  if (!db) {
+    console.warn('[Firestore] db belum aktif, update disimpan di LocalStorage.');
+    return;
+  }
   try {
     const serverTimestamp = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
       ? firebase.firestore.FieldValue.serverTimestamp()
       : Date.now();
 
     const payload = {
+      items: APP_STATE.items,
+      budgetCap: APP_STATE.budgetCap,
+      walletLimit: APP_STATE.budgetCap,
       activeLocation: APP_STATE.sessionStore,
       storeLocation: APP_STATE.sessionStore,
-      customLocations: APP_STATE.customLocations,
       shoppingDate: APP_STATE.sessionDate,
-      walletLimit: APP_STATE.budgetCap,
+      customLocations: APP_STATE.customLocations,
+      calcMode: APP_STATE.calcMode,
       updatedAt: serverTimestamp,
-      ...updates
+      ...customPayload
     };
 
-    // Simpan ke dokumen settings/activeSession sesuai spesifikasi
-    await db.collection('settings').doc('activeSession').set(payload, { merge: true });
-    // Juga simpan ke settings/appConfig untuk kompatibilitas penuh
-    await db.collection('settings').doc('appConfig').set(payload, { merge: true });
+    const sessionDocRef = db.collection(FIRESTORE_SESSION.COLLECTION).doc(FIRESTORE_SESSION.DOC_ID);
+    await sessionDocRef.set(payload, { merge: true });
+    console.log('[Firestore] Berhasil update realtime ke:', `${FIRESTORE_SESSION.COLLECTION}/${FIRESTORE_SESSION.DOC_ID}`);
   } catch (err) {
-    console.warn('Gagal sinkronisasi sesi ke Firestore:', err);
+    console.error('[Firestore] Gagal menyimpan ke session Firestore:', err);
+    if (err && err.code === 'permission-denied') {
+      console.error('[Firestore Security Rules Error]: Izin ditolak (permission-denied). Periksa konfigurasi Rules di Firebase Console agar: allow read, write: if true;');
+    }
   }
 };
 
+// Alias untuk kompatibilitas pemanggilan sebelumnya
+const syncConfigToFirestore = syncSessionToFirestore;
+
 const initFirebaseRealtime = async () => {
-  // Gunakan status connecting (biru/netral) agar tidak memicu banner kuning offline secara prematur
   setConnectionStatus('connecting', 'Menghubungkan ke Cloud Firestore...');
 
   try {
@@ -1278,114 +1242,113 @@ const initFirebaseRealtime = async () => {
 
     db = firebase.firestore();
 
-    // 1. Setup Realtime Listener for Groceries Collection via onSnapshot
+    // Setup Listener Realtime onSnapshot pada dokumen bersama shopping_sessions/rian_active_session
     if (unsubscribeSnapshot) {
       unsubscribeSnapshot();
     }
 
-    unsubscribeSnapshot = db.collection('groceries')
-      .orderBy('createdAt', 'desc')
-      .onSnapshot((snapshot) => {
-        const liveItems = [];
-        snapshot.forEach(docSnap => {
-          liveItems.push({
-            id: docSnap.id,
-            ...docSnap.data()
-          });
-        });
+    const sessionDocRef = db.collection(FIRESTORE_SESSION.COLLECTION).doc(FIRESTORE_SESSION.DOC_ID);
 
-        APP_STATE.items = liveItems;
-        saveItemsLocally(); // Cache to LocalStorage for offline fallback
-        updatePriceHistoryMap(APP_STATE.items);
-        updateBudgetSafetyDisplay();
-        renderGroceryList();
+    unsubscribeSnapshot = sessionDocRef.onSnapshot((docSnap) => {
+      if (docSnap.exists) {
+        const data = docSnap.data();
+        console.log('[Firestore] Data sesi realtime diterima dari Cloud:', data);
+
+        let shouldUpdateUI = false;
+
+        // 1. Sinkronisasi Daftar Item Belanjaan
+        if (Array.isArray(data.items)) {
+          APP_STATE.items = data.items;
+          saveItemsLocally();
+          updatePriceHistoryMap(APP_STATE.items);
+          shouldUpdateUI = true;
+        }
+
+        // 2. Sinkronisasi Limit Anggaran (Safety Cap)
+        if (data.budgetCap || data.walletLimit) {
+          const newCap = Number(data.budgetCap || data.walletLimit);
+          if (newCap !== APP_STATE.budgetCap) {
+            APP_STATE.budgetCap = newCap;
+            try {
+              localStorage.setItem(STORAGE_KEYS.BUDGET, String(newCap));
+              localStorage.setItem(STORAGE_KEYS.WALLET_LIMIT, String(newCap));
+            } catch(e) {}
+            if (dom.inputBudgetCapSetting) dom.inputBudgetCapSetting.value = newCap;
+            shouldUpdateUI = true;
+          }
+        }
+
+        // 3. Sinkronisasi Lokasi Supermarket Aktif
+        const newLoc = data.activeLocation || data.storeLocation;
+        if (newLoc && newLoc !== APP_STATE.sessionStore) {
+          APP_STATE.sessionStore = newLoc;
+          try {
+            localStorage.setItem(STORAGE_KEYS.STORE_LOCATION, newLoc);
+            localStorage.setItem(STORAGE_KEYS.SESSION_STORE, newLoc);
+          } catch(e) {}
+          if (dom.headerStoreLocation) dom.headerStoreLocation.value = newLoc;
+          if (dom.sessionStoreBadge) {
+            dom.sessionStoreBadge.textContent = newLoc.replace('Grocery - ', '');
+          }
+          shouldUpdateUI = true;
+        }
+
+        // 4. Sinkronisasi Tanggal Transaksi
+        if (data.shoppingDate && data.shoppingDate !== APP_STATE.sessionDate) {
+          APP_STATE.sessionDate = data.shoppingDate;
+          try {
+            localStorage.setItem(STORAGE_KEYS.SHOPPING_DATE, data.shoppingDate);
+            localStorage.setItem(STORAGE_KEYS.SESSION_DATE, data.shoppingDate);
+          } catch(e) {}
+          if (dom.headerShoppingDate) dom.headerShoppingDate.value = data.shoppingDate;
+          shouldUpdateUI = true;
+        }
+
+        // 5. Sinkronisasi Lokasi Kustom
+        if (Array.isArray(data.customLocations) && data.customLocations.length > 0) {
+          const merged = Array.from(new Set([...APP_STATE.customLocations, ...data.customLocations]));
+          if (merged.length !== APP_STATE.customLocations.length) {
+            APP_STATE.customLocations = merged;
+            saveCustomLocations();
+            refreshLocationDropdown();
+            refreshStoreChips();
+          }
+        }
+
+        // 6. Sinkronisasi Mode Perhitungan
+        if (data.calcMode && data.calcMode !== APP_STATE.calcMode) {
+          APP_STATE.calcMode = data.calcMode;
+          try { localStorage.setItem(STORAGE_KEYS.CALC_MODE, data.calcMode); } catch(e) {}
+          const radio = document.querySelector(`input[name="calcMode"][value="${data.calcMode}"]`);
+          if (radio) radio.checked = true;
+          shouldUpdateUI = true;
+        }
+
+        if (shouldUpdateUI) {
+          updateBudgetSafetyDisplay();
+          renderGroceryList();
+        }
         setConnectionStatus('online', 'Realtime Cloud Firestore Aktif');
-      }, (error) => {
-        console.error('Firestore onSnapshot groceries error:', error);
-        if (error && error.code === 'permission-denied') {
-          console.error('Firestore Security Rules: Pastikan aturan `allow read, write: if true;` aktif di Firebase Console.');
-        }
-        if (!navigator.onLine) {
-          setConnectionStatus('offline', 'Mode Offline (LocalStorage)');
-        }
-        loadItemsFromLocalStorage();
-        updatePriceHistoryMap(APP_STATE.items);
-        updateBudgetSafetyDisplay();
-        renderGroceryList();
-      });
-
-    // 2. Setup Realtime Listener for Active Session & Config
-    if (unsubscribeConfigSnapshot) {
-      unsubscribeConfigSnapshot();
-    }
-
-    const processSessionData = (cfg) => {
-      if (!cfg) return;
-      let shouldUpdateUI = false;
-
-      // Sinkronisasi walletLimit realtime dari HP ke PC & sebaliknya
-      if (cfg.walletLimit && Number(cfg.walletLimit) !== APP_STATE.budgetCap) {
-        APP_STATE.budgetCap = Number(cfg.walletLimit);
-        try {
-          localStorage.setItem(STORAGE_KEYS.BUDGET, String(APP_STATE.budgetCap));
-          localStorage.setItem(STORAGE_KEYS.WALLET_LIMIT, String(APP_STATE.budgetCap));
-        } catch (e) {}
-        if (dom.inputBudgetCapSetting) dom.inputBudgetCapSetting.value = APP_STATE.budgetCap;
-        shouldUpdateUI = true;
+      } else {
+        // Dokumen belum ada di Firestore -> buat sesi awal dengan data saat ini
+        console.log('[Firestore] Dokumen sesi bersama belum ada di Firestore, menginisialisasi...');
+        syncSessionToFirestore();
+        setConnectionStatus('online', 'Realtime Cloud Firestore Aktif');
       }
-
-      // Sinkronisasi customLocations realtime
-      if (Array.isArray(cfg.customLocations) && cfg.customLocations.length > 0) {
-        const merged = Array.from(new Set([...APP_STATE.customLocations, ...cfg.customLocations]));
-        if (merged.length !== APP_STATE.customLocations.length) {
-          APP_STATE.customLocations = merged;
-          saveCustomLocations();
-          refreshLocationDropdown();
-          refreshStoreChips();
-        }
+    }, (error) => {
+      console.error('[Firestore onSnapshot Error]:', error);
+      if (error && error.code === 'permission-denied') {
+        console.error('[Firestore Security Rules Error]: Akses ditolak (permission-denied). Periksa apakah Security Rules di Firebase Console mengizinkan: allow read, write: if true;');
+        showToast('Izin akses Firestore ditolak (Periksa Security Rules)', 'danger', 5000);
       }
-
-      // Sinkronisasi activeLocation / storeLocation realtime
-      const newLoc = cfg.activeLocation || cfg.storeLocation;
-      if (newLoc && newLoc !== APP_STATE.sessionStore) {
-        APP_STATE.sessionStore = newLoc;
-        try {
-          localStorage.setItem(STORAGE_KEYS.STORE_LOCATION, APP_STATE.sessionStore);
-          localStorage.setItem(STORAGE_KEYS.SESSION_STORE, APP_STATE.sessionStore);
-        } catch (e) {}
-        if (dom.headerStoreLocation) dom.headerStoreLocation.value = APP_STATE.sessionStore;
-        if (dom.sessionStoreBadge) {
-          dom.sessionStoreBadge.textContent = APP_STATE.sessionStore.replace('Grocery - ', '');
-        }
-        shouldUpdateUI = true;
+      if (!navigator.onLine) {
+        setConnectionStatus('offline', 'Mode Offline (LocalStorage)');
       }
-
-      // Sinkronisasi shoppingDate realtime
-      if (cfg.shoppingDate && cfg.shoppingDate !== APP_STATE.sessionDate) {
-        APP_STATE.sessionDate = cfg.shoppingDate;
-        try {
-          localStorage.setItem(STORAGE_KEYS.SHOPPING_DATE, APP_STATE.sessionDate);
-          localStorage.setItem(STORAGE_KEYS.SESSION_DATE, APP_STATE.sessionDate);
-        } catch (e) {}
-        if (dom.headerShoppingDate) dom.headerShoppingDate.value = APP_STATE.sessionDate;
-        shouldUpdateUI = true;
-      }
-
-      if (shouldUpdateUI) {
-        updateBudgetSafetyDisplay();
-        renderGroceryList();
-      }
-    };
-
-    // Listen to activeSession doc
-    unsubscribeConfigSnapshot = db.collection('settings').doc('activeSession')
-      .onSnapshot((docSnap) => {
-        if (docSnap.exists) {
-          processSessionData(docSnap.data());
-        }
-      }, (err) => {
-        console.error('Firestore activeSession listener error:', err);
-      });
+      loadItemsFromLocalStorage();
+      updatePriceHistoryMap(APP_STATE.items);
+      updateBudgetSafetyDisplay();
+      renderGroceryList();
+    });
 
   } catch (err) {
     console.error('Failed to initialize Firebase:', err);
@@ -1702,17 +1665,29 @@ const loadDemoGroceryData = async () => {
 
   showToast('Memuat data contoh belanjaan studi kasus Rian...', 'warning');
 
-  for (const item of sampleData) {
+  const demoItems = [];
+  const now = Date.now();
+  sampleData.forEach((item, index) => {
     const discCalc = calculateTieredDiscount(item.unitPrice, item.discount1, item.discount2);
-    const itemToSave = {
+    demoItems.push({
       ...item,
+      id: `item_demo_${now}_${index}`,
+      walletLimit: APP_STATE.budgetCap,
       discountedUnitPrice: discCalc.finalUnitPrice,
       unitSaved: discCalc.savedUnitPrice,
       subtotal: discCalc.finalUnitPrice * item.quantity,
-      totalSaved: discCalc.savedUnitPrice * item.quantity
-    };
-    await saveItem(itemToSave);
-  }
+      totalSaved: discCalc.savedUnitPrice * item.quantity,
+      createdAt: now - (index * 1000),
+      updatedAt: now
+    });
+  });
+
+  APP_STATE.items = demoItems;
+  saveItemsLocally();
+  updatePriceHistoryMap(APP_STATE.items);
+  updateBudgetSafetyDisplay();
+  renderGroceryList();
+  await syncSessionToFirestore();
 
   showToast('Data contoh belanjaan berhasil dimuat!', 'success');
 };
@@ -2183,7 +2158,7 @@ const setupEventListeners = () => {
         localStorage.setItem(STORAGE_KEYS.WALLET_LIMIT, val.toString());
       } catch (e) {}
       updateBudgetSafetyDisplay();
-      syncConfigToFirestore({ walletLimit: val });
+      syncSessionToFirestore({ budgetCap: val, walletLimit: val });
       showToast(`Batas limit dompet berhasil diubah ke ${formatRupiah(val)}!`, 'success');
       if (dom.settingsModal) dom.settingsModal.classList.remove('active');
     });
@@ -2199,6 +2174,7 @@ const setupEventListeners = () => {
         localStorage.setItem(STORAGE_KEYS.CALC_MODE, APP_STATE.calcMode);
       } catch (err) {}
       updateBudgetSafetyDisplay();
+      syncSessionToFirestore({ calcMode: APP_STATE.calcMode });
     });
   });
 
@@ -2215,9 +2191,12 @@ const setupEventListeners = () => {
         return;
       }
       if (confirm(`Bersihkan ${checked.length} barang yang sudah dibeli dari daftar?`)) {
-        for (const item of checked) {
-          await deleteItem(item.id);
-        }
+        APP_STATE.items = APP_STATE.items.filter(i => !i.isBought);
+        saveItemsLocally();
+        updatePriceHistoryMap(APP_STATE.items);
+        updateBudgetSafetyDisplay();
+        renderGroceryList();
+        await syncSessionToFirestore();
         showToast('Barang yang sudah dibeli telah dibersihkan!', 'success');
         if (dom.settingsModal) dom.settingsModal.classList.remove('active');
       }
@@ -2228,18 +2207,15 @@ const setupEventListeners = () => {
   if (dom.btnResetAllData) {
     dom.btnResetAllData.addEventListener('click', async () => {
       if (confirm('PERINGATAN: Apakah Anda yakin ingin menghapus SEMUA data belanjaan? Tindakan ini tidak dapat dibatalkan.')) {
-        const allIds = APP_STATE.items.map(i => i.id);
-        for (const id of allIds) {
-          await deleteItem(id);
-        }
+        APP_STATE.items = [];
+        APP_STATE.priceHistory = {};
         try {
           localStorage.removeItem(STORAGE_KEYS.ITEMS);
           localStorage.removeItem(STORAGE_KEYS.PRICE_HISTORY);
         } catch (e) {}
-        APP_STATE.items = [];
-        APP_STATE.priceHistory = {};
         updateBudgetSafetyDisplay();
         renderGroceryList();
+        await syncSessionToFirestore({ items: [] });
         showToast('Semua data berhasil dibersihkan!', 'success');
         if (dom.settingsModal) dom.settingsModal.classList.remove('active');
       }
