@@ -330,8 +330,14 @@ body::before {
 }
 
 .session-select {
-  padding-right: 24px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 8px 36px 8px 10px;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
 }
 
 .session-select:focus,
@@ -811,21 +817,32 @@ body::before {
 
 .custom-select-wrapper {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  width: 100%;
+}
+
+.list-actions-right .custom-select-wrapper {
+  width: auto;
+  display: inline-flex;
 }
 
 .sort-select {
   appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
   font-family: inherit;
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 6px 28px 6px 10px;
+  padding: 6px 36px 6px 10px;
   border-radius: 10px;
   cursor: pointer;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .sort-select:focus {
@@ -836,10 +853,14 @@ body::before {
 
 .select-arrow {
   position: absolute;
-  right: 10px;
-  font-size: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 12px;
+  font-size: 0.75rem;
   color: var(--text-dim);
   pointer-events: none;
+  z-index: 2;
+  transition: color var(--transition-fast);
 }
 
 /* Items List */
@@ -1408,12 +1429,27 @@ select {
   background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
   color: var(--text-main);
   font-family: inherit;
   font-size: 0.88rem;
   transition: all var(--transition-fast);
   width: 100%;
+}
+
+input[type="text"],
+input[type="number"] {
+  padding: 10px 12px;
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 10px 36px 10px 12px;
+  cursor: pointer;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 input[type="text"]:focus,
