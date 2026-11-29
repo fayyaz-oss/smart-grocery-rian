@@ -32,6 +32,178 @@
 </head>
 
 <body>
+  <!-- Kevin MacLeod Royalty-Free Background Audio (Monkeys Spinning Monkeys) -->
+  <audio id="bgmAudio" loop preload="auto">
+    <source src="./bgm-kevin-macleod.mp3" type="audio/mpeg">
+    <source src="https://incompetech.com/music/royalty-free/mp3-royaltyfree/Monkeys%20Spinning%20Monkeys.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- ========================================================
+       AUTH SCREEN: GERBANG LOGIN & PENDAFTARAN (Auth Guard)
+       ======================================================== -->
+  <div id="authScreenContainer" class="auth-screen-container">
+    <!-- Auth Top Bar -->
+    <div class="auth-top-bar">
+      <div class="auth-brand-badge">
+        <i class="fa-solid fa-basket-shopping text-emerald"></i>
+        <span>Smart Grocery Tracker</span>
+      </div>
+      <div class="auth-top-actions">
+        <!-- Kevin MacLeod Music Button -->
+        <button id="btnAuthToggleBgm" class="btn-bgm-pill" title="Musik Latar: Monkeys Spinning Monkeys (Kevin MacLeod)" aria-label="Toggle Musik">
+          <i class="fa-solid fa-music" id="authBgmIcon"></i>
+          <span id="authBgmText">Play BGM</span>
+        </button>
+        <!-- Theme Toggle Button -->
+        <button id="btnAuthToggleTheme" class="icon-btn" title="Ganti Tema Tampilan" aria-label="Ganti Tema">
+          <i class="fa-solid fa-moon" id="authThemeIcon"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Auth Hero Headline (Exact User Specification) -->
+    <div class="auth-hero">
+      <div class="auth-lock-badge">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+      <h1 class="auth-headline">Kalau Mau Masuk Wajib Daftar Email dahulu</h1>
+      <p class="auth-subtext">Daftarkan atau masukkan akun email Anda untuk membuka seluruh fitur sesi belanja, komparator harga, kalkulator diskon, dan sinkronisasi realtime.</p>
+    </div>
+
+    <!-- Auth Main Card -->
+    <div class="auth-card">
+      <!-- Quick Demo Account Hint / 1-Click Fill -->
+      <div class="auth-quick-demo-pill" id="btnQuickFillDemoAccount" title="Klik untuk otomatis isi akun demo">
+        <div class="demo-badge-icon">
+          <i class="fa-solid fa-wand-magic-sparkles text-emerald"></i>
+        </div>
+        <div class="demo-badge-text">
+          <span class="demo-label">Akun Demo Pengujian:</span>
+          <strong>fayyaz@mutiarabangsa.sch.id</strong>
+        </div>
+        <i class="fa-solid fa-arrow-turn-down text-emerald"></i>
+      </div>
+
+      <!-- Auth Tab Switch: Masuk / Daftar -->
+      <div class="auth-tab-switch">
+        <button type="button" class="auth-tab active" id="tabAuthLogin" data-mode="login">
+          <i class="fa-solid fa-right-to-bracket"></i> Masuk (Login)
+        </button>
+        <button type="button" class="auth-tab" id="tabAuthRegister" data-mode="register">
+          <i class="fa-solid fa-user-plus"></i> Daftar Akun Baru
+        </button>
+      </div>
+
+      <!-- Email & Password Form -->
+      <form id="authEmailForm" class="auth-form" autocomplete="on">
+        <div class="form-group">
+          <label for="authEmail">
+            <i class="fa-solid fa-envelope"></i> Alamat Email <span class="required">*</span>
+          </label>
+          <div class="auth-input-wrapper">
+            <i class="fa-solid fa-at input-icon"></i>
+            <input type="email" id="authEmail" placeholder="contoh: fayyaz@mutiarabangsa.sch.id" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="authPassword">
+            <i class="fa-solid fa-lock"></i> Kata Sandi (Password) <span class="required">*</span>
+          </label>
+          <div class="auth-input-wrapper">
+            <i class="fa-solid fa-key input-icon"></i>
+            <input type="password" id="authPassword" placeholder="Minimal 6 karakter" required autocomplete="current-password">
+            <button type="button" id="btnTogglePasswordVisibility" class="btn-toggle-eye" aria-label="Lihat kata sandi">
+              <i class="fa-solid fa-eye" id="eyeIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="btnAuthSubmit" class="btn-auth-primary">
+          <i class="fa-solid fa-arrow-right-to-bracket" id="authSubmitIcon"></i>
+          <span id="btnAuthSubmitText">Masuk Sekarang</span>
+        </button>
+      </form>
+
+      <!-- Auth Divider -->
+      <div class="auth-divider">
+        <span>ATAU PILIH METODE LAIN</span>
+      </div>
+
+      <!-- Social & Phone Auth Buttons -->
+      <div class="auth-social-buttons">
+        <!-- Google Auth -->
+        <button type="button" id="btnGoogleAuth" class="btn-social btn-google">
+          <svg class="social-icon" viewBox="0 0 24 24" width="18" height="18">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Continue with Google</span>
+        </button>
+
+        <!-- Facebook Auth -->
+        <button type="button" id="btnFacebookAuth" class="btn-social btn-facebook">
+          <i class="fa-brands fa-facebook"></i>
+          <span>Continue with Facebook</span>
+        </button>
+
+        <!-- Phone Number Auth Toggle -->
+        <button type="button" id="btnPhoneAuthToggle" class="btn-social btn-phone">
+          <i class="fa-solid fa-phone"></i>
+          <span>Continue with Phone Number</span>
+        </button>
+      </div>
+
+      <!-- Phone Number & OTP Verification Section (Collapsible) -->
+      <div id="phoneAuthSection" class="phone-auth-section" style="display: none;">
+        <div class="phone-section-header">
+          <span><i class="fa-solid fa-mobile-screen text-emerald"></i> Masuk dengan Nomor HP</span>
+          <button type="button" id="btnClosePhoneSection" class="btn-close-sm">&times;</button>
+        </div>
+
+        <!-- Phone Step 1: Input Nomor -->
+        <div id="phoneStepNumber" class="phone-step">
+          <label for="phoneInput" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; display: block;">
+            Nomor Telepon WhatsApp / HP:
+          </label>
+          <div class="phone-input-row">
+            <span class="phone-prefix">+62</span>
+            <input type="tel" id="phoneInput" inputmode="numeric" placeholder="81234567890" maxlength="13">
+          </div>
+          <button type="button" id="btnSendOtp" class="btn-auth-primary" style="margin-top: 10px;">
+            <i class="fa-solid fa-paper-plane"></i> Kirim Kode OTP
+          </button>
+        </div>
+
+        <!-- Phone Step 2: Input 6 Digit OTP -->
+        <div id="phoneStepOtp" class="phone-step" style="display: none;">
+          <p class="otp-notice">Masukkan 6 digit kode OTP verifikasi untuk nomor <strong id="otpTargetPhone">+62...</strong>:</p>
+          <div class="otp-input-boxes">
+            <input type="text" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="0">
+            <input type="text" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="1">
+            <input type="text" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="2">
+            <input type="text" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="3">
+            <input type="text" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="4">
+            <input type="text" maxlength="1" inputmode="numeric" class="otp-digit" data-idx="5">
+          </div>
+          <p class="demo-otp-hint">
+            <i class="fa-solid fa-circle-info text-sky"></i> Demo Uji Lab: Masukkan kode <strong>123456</strong>
+          </p>
+          <div class="phone-otp-actions">
+            <button type="button" id="btnVerifyOtp" class="btn-auth-primary">
+              <i class="fa-solid fa-check-double"></i> Verifikasi & Masuk
+            </button>
+            <button type="button" id="btnBackToPhoneStep" class="btn-resend-link">
+              Ubah Nomor Telepon
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Offline / Online Toast & Connection Banner -->
   <div id="connectionBanner" class="connection-banner">
     <div class="banner-content">
@@ -43,8 +215,8 @@
     </button>
   </div>
 
-  <!-- Main Mobile Container -->
-  <div class="app-container">
+  <!-- Main Mobile Container (Hidden until user logs in) -->
+  <div class="app-container" id="mainAppContainer">
 
     <!-- Header -->
     <header class="app-header">
@@ -59,6 +231,10 @@
       </div>
 
       <div class="header-actions">
+        <!-- Kevin MacLeod Music Button -->
+        <button id="btnToggleBgm" class="icon-btn" title="Musik Latar: Monkeys Spinning Monkeys (Kevin MacLeod)" aria-label="Toggle Musik">
+          <i class="fa-solid fa-music" id="mainBgmIcon"></i>
+        </button>
         <!-- Sound Toggle Button -->
         <button id="btnToggleSound" class="icon-btn" title="Efek Suara Aktif" aria-label="Toggle Suara">
           <i class="fa-solid fa-volume-high" id="soundIcon"></i>
@@ -649,6 +825,25 @@
       </div>
 
       <div class="settings-modal-body">
+        <!-- User Account & Session Card -->
+        <div class="settings-card user-session-card" id="userSessionCard">
+          <div class="user-session-header">
+            <div class="user-session-avatar">
+              <i class="fa-solid fa-circle-user text-emerald"></i>
+            </div>
+            <div class="user-session-info">
+              <strong id="sessionUserName">Fayyaz (Siswa)</strong>
+              <span id="sessionUserEmail">fayyaz@mutiarabangsa.sch.id</span>
+              <span class="user-method-badge" id="sessionAuthMethod">
+                <i class="fa-solid fa-shield-check"></i> Email Terverifikasi
+              </span>
+            </div>
+          </div>
+          <button type="button" id="btnLogout" class="btn-logout-action">
+            <i class="fa-solid fa-right-from-bracket"></i> Keluar / Logout
+          </button>
+        </div>
+
         <!-- Theme Settings -->
         <div class="settings-card">
           <strong>Tema Tampilan</strong>
@@ -740,11 +935,47 @@
     </div>
   </div>
 
+  <!-- Facebook Auth Simulation Modal -->
+  <div id="facebookAuthModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-sheet fb-modal-sheet" role="dialog" aria-labelledby="fbModalTitle">
+      <div class="fb-modal-header">
+        <div class="fb-logo-wrap">
+          <i class="fa-brands fa-facebook"></i>
+        </div>
+        <div class="fb-modal-title">
+          <h3 id="fbModalTitle">Login dengan Facebook</h3>
+          <p>Smart Grocery & Budget Safety Tracker</p>
+        </div>
+        <button type="button" id="btnCloseFbModal" class="btn-close-modal" aria-label="Tutup">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="fb-modal-body">
+        <div class="fb-user-preview">
+          <div class="fb-avatar">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          <div class="fb-user-meta">
+            <strong>Fayyaz (Facebook Account)</strong>
+            <span>fayyaz.facebook@grocery.id</span>
+          </div>
+        </div>
+        <p class="fb-permission-text">
+          Aplikasi ini akan menerima nama, foto profil, dan alamat email publik yang terkait dengan akun Facebook Anda.
+        </p>
+        <button type="button" id="btnConfirmFbLogin" class="btn-facebook-confirm">
+          <i class="fa-brands fa-facebook"></i> Lanjutkan sebagai Fayyaz
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
   <!-- Firebase SDK (Compat Version - Berjalan normal di file:/// maupun Web Server) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
   <!-- Main Application Script (Plain JavaScript, file:// friendly) -->

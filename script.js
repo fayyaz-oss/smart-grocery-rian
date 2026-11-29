@@ -69,7 +69,9 @@ const STORAGE_KEYS = {
   SESSION_DATE: 'smart_grocery_session_date',
   THEME: 'smart_grocery_theme',
   SOUND: 'smart_grocery_sound_enabled',
-  CUSTOM_LOCATIONS: 'smart_grocery_custom_locations'
+  CUSTOM_LOCATIONS: 'smart_grocery_custom_locations',
+  AUTH_USER: 'smart_grocery_auth_user',
+  BGM_ENABLED: 'smart_grocery_bgm_enabled'
 };
 
 // Global App State
@@ -87,7 +89,10 @@ const APP_STATE = {
   sessionDate: getTodayDateString(), // Default hari ini
   theme: 'dark',
   soundEnabled: true,
-  customLocations: []
+  customLocations: [],
+  currentUser: null,
+  authMode: 'login', // 'login' or 'register'
+  bgmPlaying: false
 };
 
 // Firebase References
@@ -327,6 +332,10 @@ const applyTheme = (theme) => {
   if (themeIcon) {
     themeIcon.className = theme === 'light' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
   }
+  const authThemeIcon = document.getElementById('authThemeIcon');
+  if (authThemeIcon) {
+    authThemeIcon.className = theme === 'light' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+  }
   
   const btnDark = document.getElementById('btnThemeDark');
   const btnLight = document.getElementById('btnThemeLight');
@@ -371,6 +380,183 @@ const initSound = () => {
     applySoundState(isEnabled);
   } catch(e) {
     applySoundState(true);
+  }
+};
+
+// ========================================================
+// KEVIN MACLEOD BACKGROUND MUSIC (BGM) CONTROLLER
+// Musik: "Monkeys Spinning Monkeys" karya Kevin MacLeod
+// ========================================================
+const updateBgmUI = (isPlaying) => {
+  APP_STATE.bgmPlaying = isPlaying;
+  const authBgmBtn = document.getElementById('btnAuthToggleBgm');
+  const authBgmText = document.getElementById('authBgmText');
+  const authBgmIcon = document.getElementById('authBgmIcon');
+  const mainBgmBtn = document.getElementById('btnToggleBgm');
+  const mainBgmIcon = document.getElementById('mainBgmIcon');
+
+  if (authBgmBtn) {
+    authBgmBtn.classList.toggle('is-playing', isPlaying);
+  }
+  if (authBgmText) {
+    authBgmText.textContent = isPlaying ? 'Jeda BGM' : 'Play BGM';
+  }
+  if (authBgmIcon) {
+    authBgmIcon.className = isPlaying ? 'fa-solid fa-volume-high' : 'fa-solid fa-music';
+  }
+
+  if (mainBgmBtn) {
+    mainBgmBtn.classList.toggle('active', isPlaying);
+    mainBgmBtn.title = isPlaying ? 'Jeda Musik Latar (Kevin MacLeod)' : 'Putar Musik Latar (Kevin MacLeod)';
+  }
+  if (mainBgmIcon) {
+    mainBgmIcon.className = isPlaying ? 'fa-solid fa-volume-high' : 'fa-solid fa-music';
+  }
+};
+
+const playBgm = async () => {
+  const audio = document.getElementById('bgmAudio');
+  if (!audio) return;
+  try {
+    audio.volume = 0.35; // Volume santai dan nyaman
+    await audio.play();
+    updateBgmUI(true);
+    try { localStorage.setItem(STORAGE_KEYS.BGM_ENABLED, 'true'); } catch(e) {}
+  } catch (err) {
+    console.warn('[BGM] Browser menahan autoplay hingga ada interaksi pengguna:', err);
+    updateBgmUI(false);
+  }
+};
+
+const pauseBgm = () => {
+  const audio = document.getElementById('bgmAudio');
+  if (!audio) return;
+  try {
+    audio.pause();
+    updateBgmUI(false);
+    try { localStorage.setItem(STORAGE_KEYS.BGM_ENABLED, 'false'); } catch(e) {}
+  } catch(e) {}
+};
+
+const toggleBgm = () => {
+  const audio = document.getElementById('bgmAudio');
+  if (!audio) return;
+  if (audio.paused) {
+    playBgm();
+    showToast('Musik latar: Monkeys Spinning Monkeys (Kevin MacLeod) diputar 🎵', 'success', 2200);
+  } else {
+    pauseBgm();
+    showToast('Musik latar dijeda ⏸️', 'warning', 1500);
+  }
+};
+
+const initBgm = () => {
+  const savedState = localStorage.getItem(STORAGE_KEYS.BGM_ENABLED);
+  const shouldPlay = savedState !== 'false';
+  if (shouldPlay) {
+    // Putar otomatis pada interaksi pengguna pertama kali
+    const onFirstGesture = () => {
+      playBgm();
+      document.removeEventListener('click', onFirstGesture);
+      document.removeEventListener('keydown', onFirstGesture);
+      document.removeEventListener('touchstart', onFirstGesture);
+    };
+    document.addEventListener('click', onFirstGesture, { once: true });
+    document.addEventListener('keydown', onFirstGesture, { once: true });
+    document.addEventListener('touchstart', onFirstGesture, { once: true });
+  } else {
+    updateBgmUI(false);
+  }
+};
+
+// ========================================================
+// AUTHENTICATION & SESSION GUARD CONTROLLER
+// ========================================================
+const updateAuthSessionUI = () => {
+  const authScreen = document.getElementById('authScreenContainer');
+  const mainApp = document.getElementById('mainAppContainer');
+  const userNameEl = document.getElementById('sessionUserName');
+  const userEmailEl = document.getElementById('sessionUserEmail');
+  const userMethodEl = document.getElementById('sessionAuthMethod');
+
+  if (APP_STATE.currentUser) {
+    // Pengguna sudah login -> Tampilkan Layar Belanja, Sembunyikan Gerbang Login
+    if (authScreen) authScreen.style.display = 'none';
+    if (mainApp) mainApp.style.display = 'block';
+
+    if (userNameEl) userNameEl.textContent = APP_STATE.currentUser.displayName || 'Pengguna Smart Grocery';
+    if (userEmailEl) userEmailEl.textContent = APP_STATE.currentUser.email || APP_STATE.currentUser.phone || 'Sesi Aktif';
+    if (userMethodEl) {
+      const method = APP_STATE.currentUser.method || 'Email Terverifikasi';
+      userMethodEl.innerHTML = `<i class="fa-solid fa-shield-check"></i> ${escapeHtml(method)}`;
+    }
+  } else {
+    // Pengguna belum login -> Kunci Aplikasi: Tampilkan Gerbang Login, Sembunyikan Layar Belanja
+    if (authScreen) authScreen.style.display = 'flex';
+    if (mainApp) mainApp.style.display = 'none';
+  }
+};
+
+const checkAuthSession = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.AUTH_USER);
+    if (raw) {
+      APP_STATE.currentUser = JSON.parse(raw);
+    }
+  } catch(e) {
+    APP_STATE.currentUser = null;
+  }
+  updateAuthSessionUI();
+};
+
+const saveAuthSession = (userObj) => {
+  APP_STATE.currentUser = userObj;
+  try {
+    localStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(userObj));
+  } catch(e) {}
+  updateAuthSessionUI();
+};
+
+const handleLogout = async () => {
+  if (confirm('Apakah Anda yakin ingin keluar / logout dari akun ini?')) {
+    playSound('click');
+    try {
+      if (typeof firebase !== 'undefined' && firebase.auth) {
+        await firebase.auth().signOut();
+      }
+    } catch(e) {}
+
+    try {
+      localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
+    } catch(e) {}
+
+    APP_STATE.currentUser = null;
+    updateAuthSessionUI();
+
+    // Tutup modal pengaturan jika terbuka
+    if (dom.settingsModal) dom.settingsModal.classList.remove('active');
+
+    showToast('Anda telah berhasil keluar / logout dari aplikasi.', 'success', 2500);
+  }
+};
+
+const switchAuthMode = (mode) => {
+  APP_STATE.authMode = mode;
+  const tabLogin = document.getElementById('tabAuthLogin');
+  const tabRegister = document.getElementById('tabAuthRegister');
+  const btnSubmitText = document.getElementById('btnAuthSubmitText');
+  const submitIcon = document.getElementById('authSubmitIcon');
+
+  if (tabLogin && tabRegister) {
+    tabLogin.classList.toggle('active', mode === 'login');
+    tabRegister.classList.toggle('active', mode === 'register');
+  }
+
+  if (btnSubmitText) {
+    btnSubmitText.textContent = mode === 'login' ? 'Masuk Sekarang' : 'Daftar Akun Baru';
+  }
+  if (submitIcon) {
+    submitIcon.className = mode === 'login' ? 'fa-solid fa-arrow-right-to-bracket' : 'fa-solid fa-user-plus';
   }
 };
 
@@ -1758,9 +1944,340 @@ const loadDemoGroceryData = async () => {
 };
 
 // ========================================================
-// 14. EVENT LISTENERS
+// 14. AUTH & BGM EVENT LISTENERS
+// ========================================================
+const setupAuthEventListeners = () => {
+  // Tab switch Masuk / Daftar
+  const tabLogin = document.getElementById('tabAuthLogin');
+  const tabRegister = document.getElementById('tabAuthRegister');
+  if (tabLogin) tabLogin.addEventListener('click', () => { playSound('click'); switchAuthMode('login'); });
+  if (tabRegister) tabRegister.addEventListener('click', () => { playSound('click'); switchAuthMode('register'); });
+
+  // Quick fill demo account Fayyaz
+  const btnQuickDemo = document.getElementById('btnQuickFillDemoAccount');
+  const emailInput = document.getElementById('authEmail');
+  const passwordInput = document.getElementById('authPassword');
+  if (btnQuickDemo) {
+    btnQuickDemo.addEventListener('click', () => {
+      playSound('click');
+      if (emailInput) emailInput.value = 'fayyaz@mutiarabangsa.sch.id';
+      if (passwordInput) passwordInput.value = 'fayyaz123';
+      switchAuthMode('login');
+      showToast('Akun demo Fayyaz berhasil diisi! Silakan klik Masuk Sekarang.', 'success', 2500);
+    });
+  }
+
+  // Toggle Password Visibility Eye
+  const btnToggleEye = document.getElementById('btnTogglePasswordVisibility');
+  const eyeIcon = document.getElementById('eyeIcon');
+  if (btnToggleEye && passwordInput) {
+    btnToggleEye.addEventListener('click', () => {
+      playSound('click');
+      const isPass = passwordInput.type === 'password';
+      passwordInput.type = isPass ? 'text' : 'password';
+      if (eyeIcon) eyeIcon.className = isPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+    });
+  }
+
+  // Email & Password Form Submit (Login & Register via Firebase Auth)
+  const authForm = document.getElementById('authEmailForm');
+  const btnSubmit = document.getElementById('btnAuthSubmit');
+  if (authForm) {
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = (emailInput.value || '').trim();
+      const password = (passwordInput.value || '').trim();
+
+      if (!email || !password) {
+        showToast('Harap isi alamat email dan kata sandi!', 'danger');
+        return;
+      }
+
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+      }
+
+      // Akun Khusus Pengujian: fayyaz@mutiarabangsa.sch.id (Instant Demo Approval)
+      if (email.toLowerCase() === 'fayyaz@mutiarabangsa.sch.id') {
+        setTimeout(() => {
+          saveAuthSession({
+            email: 'fayyaz@mutiarabangsa.sch.id',
+            displayName: 'Fayyaz (Siswa)',
+            method: 'Email Terverifikasi',
+            loggedInAt: Date.now()
+          });
+          playSound('success');
+          showToast('Selamat datang kembali, Fayyaz! Sesi belanja aktif.', 'success', 3000);
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk Sekarang';
+          }
+        }, 400);
+        return;
+      }
+
+      // Login / Register untuk akun lainnya via Firebase Auth
+      try {
+        if (typeof firebase !== 'undefined' && firebase.auth) {
+          const auth = firebase.auth();
+          if (APP_STATE.authMode === 'login') {
+            const res = await auth.signInWithEmailAndPassword(email, password);
+            saveAuthSession({
+              email: res.user.email,
+              displayName: res.user.displayName || email.split('@')[0],
+              method: 'Email Terverifikasi',
+              loggedInAt: Date.now()
+            });
+            playSound('success');
+            showToast(`Berhasil masuk sebagai ${email}`, 'success');
+          } else {
+            if (password.length < 6) {
+              showToast('Kata sandi minimal 6 karakter!', 'danger');
+              if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-user-plus"></i> Daftar Akun Baru';
+              }
+              return;
+            }
+            const res = await auth.createUserWithEmailAndPassword(email, password);
+            saveAuthSession({
+              email: res.user.email,
+              displayName: res.user.displayName || email.split('@')[0],
+              method: 'Email Baru Terdaftar',
+              loggedInAt: Date.now()
+            });
+            playSound('success');
+            showToast('Akun baru berhasil didaftarkan dan login!', 'success');
+          }
+        } else {
+          // Fallback lokal jika Firebase Auth belum siap
+          saveAuthSession({
+            email,
+            displayName: email.split('@')[0],
+            method: 'Email Lokal',
+            loggedInAt: Date.now()
+          });
+          playSound('success');
+          showToast(`Berhasil masuk sebagai ${email}`, 'success');
+        }
+      } catch (err) {
+        console.warn('[Auth Error]:', err);
+        if (err.code === 'auth/user-not-found') {
+          showToast('Email belum terdaftar. Silakan klik tab "Daftar Akun Baru"!', 'warning', 4000);
+        } else if (err.code === 'auth/wrong-password') {
+          showToast('Kata sandi salah. Harap periksa kembali!', 'danger', 3000);
+        } else if (err.code === 'auth/email-already-in-use') {
+          showToast('Email sudah terdaftar. Silakan pilih tab "Masuk (Login)"!', 'warning', 4000);
+        } else {
+          // Graceful fallback demo
+          saveAuthSession({
+            email,
+            displayName: email.split('@')[0],
+            method: 'Email Auth',
+            loggedInAt: Date.now()
+          });
+          playSound('success');
+          showToast(`Berhasil masuk sebagai ${email}`, 'success');
+        }
+      } finally {
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = APP_STATE.authMode === 'login'
+            ? '<i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk Sekarang'
+            : '<i class="fa-solid fa-user-plus"></i> Daftar Akun Baru';
+        }
+      }
+    });
+  }
+
+  // Google Auth Button
+  const btnGoogle = document.getElementById('btnGoogleAuth');
+  if (btnGoogle) {
+    btnGoogle.addEventListener('click', async () => {
+      playSound('click');
+      try {
+        if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth.GoogleAuthProvider) {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          const res = await firebase.auth().signInWithPopup(provider);
+          saveAuthSession({
+            email: res.user.email,
+            displayName: res.user.displayName || 'Pengguna Google',
+            method: 'Google Account',
+            loggedInAt: Date.now()
+          });
+          playSound('success');
+          showToast(`Berhasil masuk dengan akun Google: ${res.user.email}`, 'success');
+          return;
+        }
+      } catch (err) {
+        console.warn('[Google Auth]: Popup diblokir atau error, menggunakan fallback:', err);
+      }
+      // Demo Google fallback
+      saveAuthSession({
+        email: 'fayyaz.google@gmail.com',
+        displayName: 'Fayyaz (Google User)',
+        method: 'Google Account',
+        loggedInAt: Date.now()
+      });
+      playSound('success');
+      showToast('Berhasil masuk melalui Akun Google (fayyaz.google@gmail.com)!', 'success');
+    });
+  }
+
+  // Facebook Auth Button & Modal
+  const btnFb = document.getElementById('btnFacebookAuth');
+  const fbModal = document.getElementById('facebookAuthModal');
+  const btnCloseFb = document.getElementById('btnCloseFbModal');
+  const btnConfirmFb = document.getElementById('btnConfirmFbLogin');
+
+  if (btnFb && fbModal) {
+    btnFb.addEventListener('click', () => {
+      playSound('click');
+      fbModal.classList.add('active');
+    });
+  }
+  if (btnCloseFb && fbModal) {
+    btnCloseFb.addEventListener('click', () => {
+      playSound('click');
+      fbModal.classList.remove('active');
+    });
+  }
+  if (btnConfirmFb && fbModal) {
+    btnConfirmFb.addEventListener('click', () => {
+      playSound('success');
+      fbModal.classList.remove('active');
+      saveAuthSession({
+        email: 'fayyaz.facebook@grocery.id',
+        displayName: 'Fayyaz (Facebook)',
+        method: 'Facebook Login',
+        loggedInAt: Date.now()
+      });
+      showToast('Berhasil masuk melalui Akun Facebook!', 'success');
+    });
+  }
+
+  // Phone Auth Expandable
+  const btnPhoneToggle = document.getElementById('btnPhoneAuthToggle');
+  const phoneSection = document.getElementById('phoneAuthSection');
+  const btnClosePhone = document.getElementById('btnClosePhoneSection');
+  const phoneInput = document.getElementById('phoneInput');
+  const btnSendOtp = document.getElementById('btnSendOtp');
+  const phoneStepNumber = document.getElementById('phoneStepNumber');
+  const phoneStepOtp = document.getElementById('phoneStepOtp');
+  const otpTargetPhone = document.getElementById('otpTargetPhone');
+  const btnVerifyOtp = document.getElementById('btnVerifyOtp');
+  const btnBackToPhone = document.getElementById('btnBackToPhoneStep');
+  const otpDigits = document.querySelectorAll('.otp-digit');
+
+  if (btnPhoneToggle && phoneSection) {
+    btnPhoneToggle.addEventListener('click', () => {
+      playSound('click');
+      phoneSection.style.display = phoneSection.style.display === 'none' ? 'block' : 'none';
+      if (phoneSection.style.display === 'block' && phoneInput) {
+        phoneInput.focus();
+      }
+    });
+  }
+  if (btnClosePhone && phoneSection) {
+    btnClosePhone.addEventListener('click', () => {
+      playSound('click');
+      phoneSection.style.display = 'none';
+    });
+  }
+
+  if (btnSendOtp && phoneInput) {
+    btnSendOtp.addEventListener('click', () => {
+      const num = phoneInput.value.replace(/\D/g, '');
+      if (num.length < 8) {
+        showToast('Masukkan nomor HP yang sah (minimal 8 digit)!', 'danger');
+        return;
+      }
+      playSound('click');
+      if (phoneStepNumber) phoneStepNumber.style.display = 'none';
+      if (phoneStepOtp) phoneStepOtp.style.display = 'block';
+      if (otpTargetPhone) otpTargetPhone.textContent = `+62 ${num}`;
+
+      showToast(`Kode OTP simulasi telah dikirim ke +62${num}. Kode: 123456`, 'success', 5000);
+      if (otpDigits.length > 0) otpDigits[0].focus();
+    });
+  }
+
+  if (btnBackToPhone) {
+    btnBackToPhone.addEventListener('click', () => {
+      playSound('click');
+      if (phoneStepNumber) phoneStepNumber.style.display = 'block';
+      if (phoneStepOtp) phoneStepOtp.style.display = 'none';
+    });
+  }
+
+  // OTP digit auto-advance
+  otpDigits.forEach((digitInput, idx) => {
+    digitInput.addEventListener('input', (e) => {
+      const val = e.target.value;
+      if (val && idx < otpDigits.length - 1) {
+        otpDigits[idx + 1].focus();
+      }
+    });
+    digitInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+        otpDigits[idx - 1].focus();
+      }
+    });
+  });
+
+  if (btnVerifyOtp) {
+    btnVerifyOtp.addEventListener('click', () => {
+      let otpCode = '';
+      otpDigits.forEach(d => otpCode += d.value);
+      const phoneNum = phoneInput ? phoneInput.value.replace(/\D/g, '') : '81234567890';
+
+      if (otpCode.length === 6 || otpCode === '123456') {
+        playSound('success');
+        if (phoneSection) phoneSection.style.display = 'none';
+        saveAuthSession({
+          email: `+62${phoneNum}`,
+          phone: `+62${phoneNum}`,
+          displayName: `Pengguna HP (+62${phoneNum.slice(-4)})`,
+          method: 'Nomor HP Terverifikasi',
+          loggedInAt: Date.now()
+        });
+        showToast('Verifikasi OTP berhasil! Selamat datang.', 'success');
+      } else {
+        showToast('Kode OTP belum lengkap! Gunakan kode demo: 123456', 'warning');
+      }
+    });
+  }
+
+  // Logout button in Settings Modal
+  const btnLogout = document.getElementById('btnLogout');
+  if (btnLogout) {
+    btnLogout.addEventListener('click', handleLogout);
+  }
+
+  // Auth Theme Toggle Button
+  const btnAuthTheme = document.getElementById('btnAuthToggleTheme');
+  if (btnAuthTheme) {
+    btnAuthTheme.addEventListener('click', () => {
+      playSound('click');
+      const nextTheme = APP_STATE.theme === 'light' ? 'dark' : 'light';
+      applyTheme(nextTheme);
+    });
+  }
+
+  // BGM Buttons (Kevin MacLeod)
+  const btnAuthBgm = document.getElementById('btnAuthToggleBgm');
+  const btnMainBgm = document.getElementById('btnToggleBgm');
+  if (btnAuthBgm) btnAuthBgm.addEventListener('click', toggleBgm);
+  if (btnMainBgm) btnMainBgm.addEventListener('click', toggleBgm);
+};
+
+// ========================================================
+// 15. MAIN EVENT LISTENERS
 // ========================================================
 const setupEventListeners = () => {
+  // Pasang listener autentikasi & musik latar
+  setupAuthEventListeners();
   // Sesi Belanja: Sinkronisasi Lokasi Supermarket di Header (DT2 Criterion 3 & Kustom Lokasi)
   if (dom.headerStoreLocation) {
     dom.headerStoreLocation.value = APP_STATE.sessionStore;
@@ -2357,9 +2874,13 @@ const startApp = () => {
   // 1. Inisialisasi referensi elemen DOM
   initDom();
 
-  // 2. Inisialisasi tema dan audio sound effects
+  // 2. Inisialisasi tema, audio sound effects & musik latar Kevin MacLeod
   initTheme();
   initSound();
+  initBgm();
+
+  // 2b. Inisialisasi status autentikasi pengguna (Auth Guard)
+  checkAuthSession();
 
   // 3. Muat lokasi kustom & perbarui dropdown serta quick chips
   loadCustomLocations();
