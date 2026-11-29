@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Smart Grocery & Budget Safety Tracker</title>
-  
+
   <!-- PWA Meta Tags -->
-  <meta name="description" content="Aplikasi PWA Pintar Daftar Belanja dengan Kalkulator Diskon Bertingkat, Komparator Harga Toko, dan Pelacak Batas Anggaran Realtime">
+  <meta name="description"
+    content="Aplikasi PWA Pintar Daftar Belanja dengan Kalkulator Diskon Bertingkat, Komparator Harga Toko, dan Pelacak Batas Anggaran Realtime">
   <meta name="theme-color" content="#10b981">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,14 +21,16 @@
   <!-- Google Fonts: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
   <!-- FontAwesome 6 Icons CDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  
+
   <!-- Custom CSS -->
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <!-- Offline / Online Toast & Connection Banner -->
   <div id="connectionBanner" class="connection-banner">
@@ -40,7 +45,7 @@
 
   <!-- Main Mobile Container -->
   <div class="app-container">
-    
+
     <!-- Header -->
     <header class="app-header">
       <div class="header-brand">
@@ -108,7 +113,8 @@
           </div>
           <!-- Custom Location Input (shown when "+ Tambah Lokasi Kustom..." is selected) -->
           <div id="customLocationInputWrapper" class="custom-location-input-wrapper" style="display:none;">
-            <input type="text" id="customLocationInput" placeholder="Contoh: AEON Mall BSD, Toko Pak Budi..." autocomplete="off">
+            <input type="text" id="customLocationInput" placeholder="Contoh: AEON Mall BSD, Toko Pak Budi..."
+              autocomplete="off">
             <button type="button" id="btnSaveCustomLocation" class="btn-save-custom-loc">
               <i class="fa-solid fa-check"></i> Simpan Lokasi
             </button>
@@ -227,7 +233,7 @@
           <span>Daftar Belanjaan</span>
           <span class="item-counter-badge" id="listBadgeCount">0</span>
         </h2>
-        
+
         <div class="list-actions-right">
           <!-- Sort Dropdown -->
           <div class="custom-select-wrapper">
@@ -299,7 +305,8 @@
             <i class="fa-solid fa-box"></i> Nama Barang <span class="required">*</span>
           </label>
           <div class="input-with-icon">
-            <input type="text" id="inputItemName" list="itemListHistory" placeholder="Misal: Minyak Goreng 2L, Beras Ramos 5kg" required autocomplete="off">
+            <input type="text" id="inputItemName" list="itemListHistory"
+              placeholder="Misal: Minyak Goreng 2L, Beras Ramos 5kg" required autocomplete="off">
             <datalist id="itemListHistory">
               <!-- Populated dynamically from stored history -->
             </datalist>
@@ -312,7 +319,8 @@
             <label for="inputStoreName">
               <i class="fa-solid fa-shop"></i> Lokasi Toko <span class="required">*</span>
             </label>
-            <input type="text" id="inputStoreName" list="storeListHistory" placeholder="Nama supermarket / toko" required autocomplete="off">
+            <input type="text" id="inputStoreName" list="storeListHistory" placeholder="Nama supermarket / toko"
+              required autocomplete="off">
             <datalist id="storeListHistory">
               <option value="Lotte Mart Grocery - Puri Indah">
               <option value="Superindo">
@@ -339,7 +347,8 @@
 
         <!-- Quick Store Chips -->
         <div class="store-quick-chips">
-          <button type="button" class="store-chip highlight" data-store="Lotte Mart Grocery - Puri Indah">Lotte Mart - Puri Indah</button>
+          <button type="button" class="store-chip highlight" data-store="Lotte Mart Grocery - Puri Indah">Lotte Mart -
+            Puri Indah</button>
           <button type="button" class="store-chip" data-store="Superindo">Superindo</button>
           <button type="button" class="store-chip" data-store="Indomaret">Indomaret</button>
           <button type="button" class="store-chip" data-store="Alfamart">Alfamart</button>
@@ -409,7 +418,8 @@
           </label>
           <div class="input-with-currency">
             <span class="currency-prefix">Rp</span>
-            <input type="number" id="inputUnitPrice" inputmode="numeric" placeholder="Contoh: 25000" min="0" step="50" required>
+            <input type="number" id="inputUnitPrice" inputmode="numeric" placeholder="Contoh: 25000" min="0" step="50"
+              required>
           </div>
         </div>
 
@@ -437,20 +447,23 @@
           </div>
 
           <div class="discount-accordion-body" id="discountBody">
-            <p class="discount-desc">Mendukung diskon ganda beruntun (misal: <strong>50% + 20%</strong> pada promo supermarket).</p>
-            
+            <p class="discount-desc">Mendukung diskon ganda beruntun (misal: <strong>50% + 20%</strong> pada promo
+              supermarket).</p>
+
             <div class="form-row-2">
               <div class="form-group">
                 <label for="inputDiscount1">Diskon 1 (%)</label>
                 <div class="input-with-suffix">
-                  <input type="number" id="inputDiscount1" inputmode="numeric" min="0" max="99" placeholder="0" value="0">
+                  <input type="number" id="inputDiscount1" inputmode="numeric" min="0" max="99" placeholder="0"
+                    value="0">
                   <span class="suffix">%</span>
                 </div>
               </div>
               <div class="form-group">
                 <label for="inputDiscount2">Diskon 2 (Tambahan %)</label>
                 <div class="input-with-suffix">
-                  <input type="number" id="inputDiscount2" inputmode="numeric" min="0" max="99" placeholder="0" value="0">
+                  <input type="number" id="inputDiscount2" inputmode="numeric" min="0" max="99" placeholder="0"
+                    value="0">
                   <span class="suffix">%</span>
                 </div>
               </div>
@@ -603,7 +616,8 @@
 
       <div class="history-modal-body">
         <p class="history-helper-text">
-          Sistem secara otomatis mencatat harga barang di berbagai supermarket/pasar untuk memberikan rekomendasi belanja termurah.
+          Sistem secara otomatis mencatat harga barang di berbagai supermarket/pasar untuk memberikan rekomendasi
+          belanja termurah.
         </p>
 
         <div id="storeComparisonList" class="store-comparison-list">
@@ -727,4 +741,5 @@
   <!-- Main Application Script (Plain JavaScript, file:// friendly) -->
   <script src="script.js"></script>
 </body>
+
 </html>
