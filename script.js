@@ -72,7 +72,8 @@ const STORAGE_KEYS = {
   CUSTOM_LOCATIONS: 'smart_grocery_custom_locations',
   AUTH_USER: 'smart_grocery_auth_user',
   BGM_ENABLED: 'smart_grocery_bgm_enabled',
-  VOUCHERS: 'smart_grocery_tiktok_vouchers'
+  VOUCHERS: 'smart_grocery_tiktok_vouchers',
+  TRANSACTIONS: 'smart_grocery_checkout_history'
 };
 
 // Global App State
@@ -95,7 +96,9 @@ const APP_STATE = {
   authMode: 'login', // 'login' or 'register'
   bgmPlaying: false,
   vouchers: [],
-  warnedItems: new Set()
+  warnedItems: new Set(),
+  activeTab: 'belanja',
+  historyTransactions: []
 };
 
 // Firebase References
@@ -259,7 +262,47 @@ const initDom = () => {
     vouchersListModal: document.getElementById('vouchersListModal'),
     btnCloseVouchersList: document.getElementById('btnCloseVouchersList'),
     vouchersListContainer: document.getElementById('vouchersListContainer'),
-    confettiContainer: document.getElementById('confettiContainer')
+    confettiContainer: document.getElementById('confettiContainer'),
+
+    // SPA Tabs & Floating Bottom Nav
+    bottomNav: document.getElementById('bottomNav'),
+    navTabBtns: document.querySelectorAll('.nav-tab-btn'),
+    tabPanes: document.querySelectorAll('.app-tab-pane'),
+    navBadgeBelanja: document.getElementById('navBadgeBelanja'),
+    navBadgeRiwayat: document.getElementById('navBadgeRiwayat'),
+
+    // Checkout Action Bar
+    checkoutActionBar: document.getElementById('checkoutActionBar'),
+    checkoutBarTotal: document.getElementById('checkoutBarTotal'),
+    checkoutBarStatus: document.getElementById('checkoutBarStatus'),
+    btnCheckoutAll: document.getElementById('btnCheckoutAll'),
+
+    // Checkout Receipt Modal
+    checkoutReceiptModal: document.getElementById('checkoutReceiptModal'),
+    receiptStoreName: document.getElementById('receiptStoreName'),
+    receiptDateTime: document.getElementById('receiptDateTime'),
+    receiptItemsContainer: document.getElementById('receiptItemsContainer'),
+    receiptTotalItems: document.getElementById('receiptTotalItems'),
+    receiptTotalSaved: document.getElementById('receiptTotalSaved'),
+    receiptGrandTotal: document.getElementById('receiptGrandTotal'),
+    receiptWalletLimit: document.getElementById('receiptWalletLimit'),
+    receiptSafetyBadge: document.getElementById('receiptSafetyBadge'),
+    btnCancelCheckout: document.getElementById('btnCancelCheckout'),
+    btnConfirmCheckout: document.getElementById('btnConfirmCheckout'),
+
+    // Tab Riwayat
+    checkoutHistoryList: document.getElementById('checkoutHistoryList'),
+    emptyHistoryState: document.getElementById('emptyHistoryState'),
+    historyTrxCountBadge: document.getElementById('historyTrxCountBadge'),
+    btnClearTrxHistory: document.getElementById('btnClearTrxHistory'),
+    btnStartShoppingFromHistory: document.getElementById('btnStartShoppingFromHistory'),
+
+    // Tab Anggaran
+    btnPresetCaps: document.querySelectorAll('.btn-preset-cap'),
+    inputCustomBudgetCap: document.getElementById('inputCustomBudgetCap'),
+    btnSaveCustomBudgetCap: document.getElementById('btnSaveCustomBudgetCap'),
+    summaryTotalSaved: document.getElementById('summaryTotalSaved'),
+    summaryAvgPrice: document.getElementById('summaryAvgPrice')
   };
 };
 
@@ -1064,6 +1107,20 @@ const updateBudgetSafetyDisplay = () => {
       if (dom.safetyAlertDesc) dom.safetyAlertDesc.textContent = 'Total belanja melebihi batas saldo dompet! Kurangi kuantitas atau batalkan barang sekunder.';
     }
   }
+
+  // Update Sticky Floating Checkout Action Bar (Tab Belanja)
+  updateCheckoutActionBar(totalExpense, totalSavings, remaining, percentage);
+
+  // Update Ringkasan Tab Anggaran
+  if (dom.summaryTotalSaved) dom.summaryTotalSaved.textContent = formatRupiah(totalSavings);
+  const avgPrice = APP_STATE.items.length > 0 ? (totalExpense / APP_STATE.items.length) : 0;
+  if (dom.summaryAvgPrice) dom.summaryAvgPrice.textContent = formatRupiah(avgPrice);
+
+  // Update Nav Badge Belanja
+  if (dom.navBadgeBelanja) {
+    dom.navBadgeBelanja.textContent = APP_STATE.items.length;
+    dom.navBadgeBelanja.classList.toggle('hidden', APP_STATE.items.length === 0);
+  }
 };
 
 // ========================================================
@@ -1317,6 +1374,10 @@ const loadItemsFromLocalStorage = () => {
     if (savedDate) {
       APP_STATE.sessionDate = savedDate;
     }
+    const savedTrx = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+    if (savedTrx) {
+      APP_STATE.historyTransactions = JSON.parse(savedTrx);
+    }
   } catch (err) {
     console.error('Error loading LocalStorage:', err);
   }
@@ -1505,6 +1566,7 @@ const syncSessionToFirestore = async (customPayload = {}) => {
       shoppingDate: APP_STATE.sessionDate,
       customLocations: APP_STATE.customLocations,
       calcMode: APP_STATE.calcMode,
+      historyTransactions: APP_STATE.historyTransactions,
       updatedAt: serverTimestamp,
       ...customPayload
     };
@@ -1644,6 +1706,13 @@ const initFirebaseRealtime = async () => {
           const radio = document.querySelector(`input[name="calcMode"][value="${data.calcMode}"]`);
           if (radio) radio.checked = true;
           shouldUpdateUI = true;
+        }
+
+        // 7. Sinkronisasi Riwayat Transaksi Checkout
+        if (Array.isArray(data.historyTransactions)) {
+          APP_STATE.historyTransactions = data.historyTransactions;
+          saveHistoryLocally();
+          renderHistoryList();
         }
 
         if (shouldUpdateUI) {
@@ -2946,6 +3015,104 @@ const setupEventListeners = () => {
     });
   });
 
+  // SPA Navigation Tabs (Bottom Bar)
+  if (dom.navTabBtns) {
+    dom.navTabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        playSound('click');
+        switchTab(btn.dataset.tab);
+      });
+    });
+  }
+
+  // Checkout Action Bar Trigger
+  if (dom.btnCheckoutAll) {
+    dom.btnCheckoutAll.addEventListener('click', openCheckoutReceiptModal);
+  }
+
+  // Checkout Receipt Modal Buttons
+  if (dom.btnCancelCheckout) {
+    dom.btnCancelCheckout.addEventListener('click', () => {
+      if (dom.checkoutReceiptModal) dom.checkoutReceiptModal.classList.remove('active');
+    });
+  }
+
+  if (dom.btnConfirmCheckout) {
+    dom.btnConfirmCheckout.addEventListener('click', confirmCheckoutAndSaveHistory);
+  }
+
+  // Tab Riwayat Actions
+  if (dom.btnClearTrxHistory) {
+    dom.btnClearTrxHistory.addEventListener('click', clearTransactionHistory);
+  }
+
+  if (dom.btnStartShoppingFromHistory) {
+    dom.btnStartShoppingFromHistory.addEventListener('click', () => {
+      playSound('click');
+      switchTab('belanja');
+    });
+  }
+
+  if (dom.checkoutHistoryList) {
+    dom.checkoutHistoryList.addEventListener('click', (e) => {
+      const toggleBtn = e.target.closest('[data-action="toggle-trx-items"]');
+      if (toggleBtn) {
+        playSound('click');
+        const trxId = toggleBtn.dataset.id;
+        const breakdownEl = document.getElementById(`trx-items-${trxId}`);
+        if (breakdownEl) {
+          breakdownEl.classList.toggle('open');
+          const icon = toggleBtn.querySelector('.fa-chevron-down, .fa-chevron-up');
+          if (icon) {
+            icon.classList.toggle('fa-chevron-down');
+            icon.classList.toggle('fa-chevron-up');
+          }
+        }
+      }
+    });
+  }
+
+  // Tab Anggaran Quick Presets & Custom Limit
+  if (dom.btnPresetCaps) {
+    dom.btnPresetCaps.forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const val = Number(btn.dataset.amount);
+        if (!val) return;
+        playSound('click');
+        APP_STATE.budgetCap = val;
+        try {
+          localStorage.setItem(STORAGE_KEYS.BUDGET, val.toString());
+          localStorage.setItem(STORAGE_KEYS.WALLET_LIMIT, val.toString());
+        } catch (e) {}
+        updateBudgetSafetyDisplay();
+        await syncSessionToFirestore({ walletLimit: val, budgetCap: val });
+        showToast(`Batas limit dompet berhasil disetel ke ${formatRupiah(val)}!`, 'success');
+      });
+    });
+  }
+
+  if (dom.btnSaveCustomBudgetCap) {
+    dom.btnSaveCustomBudgetCap.addEventListener('click', async () => {
+      const input = dom.inputCustomBudgetCap;
+      if (!input || !input.value) return;
+      const val = Number(input.value);
+      if (val <= 0) {
+        showToast('Limit anggaran harus lebih besar dari Rp 0', 'warning');
+        return;
+      }
+      playSound('click');
+      APP_STATE.budgetCap = val;
+      try {
+        localStorage.setItem(STORAGE_KEYS.BUDGET, val.toString());
+        localStorage.setItem(STORAGE_KEYS.WALLET_LIMIT, val.toString());
+      } catch (e) {}
+      input.value = '';
+      updateBudgetSafetyDisplay();
+      await syncSessionToFirestore({ walletLimit: val, budgetCap: val });
+      showToast(`Batas limit dompet kustom disetel ke ${formatRupiah(val)}!`, 'success');
+    });
+  }
+
   // Window Online / Offline Events
   window.addEventListener('online', () => {
     APP_STATE.isOnline = true;
@@ -3207,7 +3374,292 @@ const renderVouchersList = () => {
 };
 
 // ========================================================
-// 17. SERVICE WORKER REGISTRATION (PWA)
+// 17. SISTEM SPA MULTI-PAGE & CHECKOUT TRANSAKSI
+// ========================================================
+const switchTab = (tabName) => {
+  APP_STATE.activeTab = tabName;
+
+  document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+
+  const targetPaneId = `tabPane${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`;
+  document.querySelectorAll('.app-tab-pane').forEach(pane => {
+    pane.classList.toggle('active', pane.id === targetPaneId);
+  });
+
+  if (tabName === 'riwayat') {
+    renderHistoryList();
+  } else if (tabName === 'anggaran') {
+    updateBudgetSafetyDisplay();
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+const updateCheckoutActionBar = (totalExpense, totalSavings, remaining, percentage) => {
+  if (!dom.checkoutActionBar) return;
+
+  const hasItems = APP_STATE.items.length > 0;
+  dom.checkoutActionBar.classList.toggle('hidden', !hasItems);
+
+  if (dom.checkoutBarTotal) {
+    dom.checkoutBarTotal.textContent = formatRupiah(totalExpense);
+  }
+
+  if (dom.checkoutBarStatus) {
+    if (percentage > 100) {
+      dom.checkoutBarStatus.textContent = 'Melebihi Limit Dompet!';
+      dom.checkoutBarStatus.className = 'checkout-bar-status text-rose';
+    } else if (percentage >= 90) {
+      dom.checkoutBarStatus.textContent = 'Mendekati Limit (Waspada)';
+      dom.checkoutBarStatus.className = 'checkout-bar-status text-amber';
+    } else {
+      dom.checkoutBarStatus.textContent = 'Anggaran Aman';
+      dom.checkoutBarStatus.className = 'checkout-bar-status text-emerald';
+    }
+  }
+};
+
+const openCheckoutReceiptModal = () => {
+  if (APP_STATE.items.length === 0) {
+    showToast('Keranjang belanja kosong! Tambahkan barang terlebih dahulu.', 'warning');
+    return;
+  }
+
+  playSound('click');
+
+  if (dom.receiptStoreName) {
+    dom.receiptStoreName.textContent = APP_STATE.sessionStore;
+  }
+  if (dom.receiptDateTime) {
+    dom.receiptDateTime.textContent = `${formatDisplayDate(APP_STATE.sessionDate)} • ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`;
+  }
+
+  let totalExpense = 0;
+  let totalSaved = 0;
+  let totalItemsCount = 0;
+
+  if (dom.receiptItemsContainer) {
+    dom.receiptItemsContainer.innerHTML = APP_STATE.items.map(item => {
+      const subtotal = Number(item.subtotal) || 0;
+      const saved = Number(item.totalSaved) || 0;
+      totalExpense += subtotal;
+      totalSaved += saved;
+      totalItemsCount += Number(item.quantity) || 1;
+
+      return `
+        <div class="receipt-item-line">
+          <div class="receipt-item-details">
+            <span class="receipt-item-title">${escapeHtml(item.name)}</span>
+            <span class="receipt-item-meta">${item.quantity} ${escapeHtml(item.unit || 'pcs')} &times; ${formatRupiah(item.discountedUnitPrice || item.unitPrice)}</span>
+          </div>
+          <strong class="receipt-item-price">${formatRupiah(subtotal)}</strong>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const cap = Number(APP_STATE.budgetCap) || 400000;
+  const percentage = cap > 0 ? (totalExpense / cap) * 100 : 0;
+
+  if (dom.receiptTotalItems) dom.receiptTotalItems.textContent = `${APP_STATE.items.length} Macam (${totalItemsCount} Unit)`;
+  if (dom.receiptTotalSaved) dom.receiptTotalSaved.textContent = formatRupiah(totalSaved);
+  if (dom.receiptGrandTotal) dom.receiptGrandTotal.textContent = formatRupiah(totalExpense);
+  if (dom.receiptWalletLimit) dom.receiptWalletLimit.textContent = formatRupiah(cap);
+
+  if (dom.receiptSafetyBadge) {
+    if (percentage > 100) {
+      dom.receiptSafetyBadge.textContent = 'Overbudget (Bahaya)';
+      dom.receiptSafetyBadge.className = 'badge-danger';
+    } else if (percentage >= 90) {
+      dom.receiptSafetyBadge.textContent = 'Waspada (Mendekati Limit)';
+      dom.receiptSafetyBadge.className = 'badge-warn';
+    } else {
+      dom.receiptSafetyBadge.textContent = 'Sangat Aman';
+      dom.receiptSafetyBadge.className = 'badge-safe';
+    }
+  }
+
+  if (dom.checkoutReceiptModal) {
+    dom.checkoutReceiptModal.classList.add('active');
+  }
+};
+
+const confirmCheckoutAndSaveHistory = async () => {
+  if (APP_STATE.items.length === 0) return;
+
+  let totalExpense = 0;
+  let totalSaved = 0;
+  APP_STATE.items.forEach(i => {
+    totalExpense += Number(i.subtotal) || 0;
+    totalSaved += Number(i.totalSaved) || 0;
+  });
+
+  const now = Date.now();
+  const newTrx = {
+    id: `trx_${now}_${Math.random().toString(36).substr(2, 6)}`,
+    storeLocation: APP_STATE.sessionStore,
+    shoppingDate: APP_STATE.sessionDate,
+    timeString: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+    items: JSON.parse(JSON.stringify(APP_STATE.items)),
+    totalExpense,
+    totalSaved,
+    walletLimit: APP_STATE.budgetCap,
+    isOverBudget: totalExpense > APP_STATE.budgetCap,
+    timestamp: now
+  };
+
+  // Tambahkan ke riwayat transaksi belanja
+  APP_STATE.historyTransactions.unshift(newTrx);
+  saveHistoryLocally();
+
+  // Reset keranjang belanja aktif
+  const checkedOutCount = APP_STATE.items.length;
+  const sampleFirstItem = APP_STATE.items[0];
+  APP_STATE.items = [];
+  saveItemsLocally();
+  updateBudgetSafetyDisplay();
+  renderGroceryList();
+
+  // Tutup modal struk
+  if (dom.checkoutReceiptModal) {
+    dom.checkoutReceiptModal.classList.remove('active');
+  }
+
+  // Realtime Cloud Firestore Sync
+  await syncSessionToFirestore({
+    items: [],
+    historyTransactions: APP_STATE.historyTransactions
+  });
+
+  // Berikan hadiah reward voucher TikTok & selebrasi!
+  grantTikTokReward(sampleFirstItem || { name: 'Semua Belanjaan' });
+
+  playSound('success');
+  showToast(`Checkout berhasil! ${checkedOutCount} barang tersimpan ke Riwayat Belanja 🎉`, 'success', 3500);
+
+  // Otomatis pindah ke tab Riwayat agar pengguna langsung melihat arsip struk belanja
+  switchTab('riwayat');
+};
+
+const loadHistoryFromStorage = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+    if (raw) {
+      APP_STATE.historyTransactions = JSON.parse(raw);
+    } else {
+      APP_STATE.historyTransactions = [];
+    }
+  } catch(e) {
+    APP_STATE.historyTransactions = [];
+  }
+  updateHistoryBadge();
+};
+
+const saveHistoryLocally = () => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(APP_STATE.historyTransactions));
+  } catch(e) {}
+  updateHistoryBadge();
+};
+
+const updateHistoryBadge = () => {
+  const count = APP_STATE.historyTransactions.length;
+  if (dom.historyTrxCountBadge) {
+    dom.historyTrxCountBadge.textContent = `${count} Transaksi`;
+  }
+  if (dom.navBadgeRiwayat) {
+    dom.navBadgeRiwayat.textContent = count;
+    dom.navBadgeRiwayat.classList.toggle('hidden', count === 0);
+  }
+};
+
+const renderHistoryList = () => {
+  if (!dom.checkoutHistoryList) return;
+
+  const count = APP_STATE.historyTransactions.length;
+  updateHistoryBadge();
+
+  if (count === 0) {
+    dom.checkoutHistoryList.innerHTML = '';
+    if (dom.emptyHistoryState) dom.emptyHistoryState.classList.add('show');
+    return;
+  }
+
+  if (dom.emptyHistoryState) dom.emptyHistoryState.classList.remove('show');
+
+  dom.checkoutHistoryList.innerHTML = APP_STATE.historyTransactions.map(trx => {
+    const dateFormatted = formatDisplayDate(trx.shoppingDate);
+    const timeFormatted = trx.timeString ? `${trx.timeString} WIB` : '';
+    const itemsCount = (trx.items && trx.items.length) || 0;
+
+    const itemsRowsHtml = (trx.items || []).map(item => `
+      <div class="trx-item-row">
+        <span class="trx-item-name">${escapeHtml(item.name)} <small>(${item.quantity} ${escapeHtml(item.unit || 'pcs')})</small></span>
+        <span class="trx-item-subtotal">${formatRupiah(item.subtotal)}</span>
+      </div>
+    `).join('');
+
+    return `
+      <div class="history-trx-card" data-id="${trx.id}">
+        <div class="trx-card-top">
+          <div class="trx-store-info">
+            <i class="fa-solid fa-shop text-emerald"></i>
+            <span>${escapeHtml(trx.storeLocation || 'Supermarket')}</span>
+          </div>
+          <span class="trx-status-badge">
+            <i class="fa-solid fa-circle-check"></i> Selesai
+          </span>
+        </div>
+
+        <div class="trx-date-time">
+          <i class="fa-regular fa-calendar-days"></i>
+          <span>${dateFormatted} ${timeFormatted ? `&bull; ${timeFormatted}` : ''}</span>
+        </div>
+
+        <div class="trx-card-financials">
+          <div class="trx-fin-col">
+            <span class="trx-fin-label">Total Belanja</span>
+            <span class="trx-fin-val">${formatRupiah(trx.totalExpense)}</span>
+          </div>
+          <div class="trx-fin-col">
+            <span class="trx-fin-label">Hemat Diskon</span>
+            <span class="trx-fin-saved">+${formatRupiah(trx.totalSaved || 0)}</span>
+          </div>
+        </div>
+
+        <button type="button" class="trx-items-toggle" data-action="toggle-trx-items" data-id="${trx.id}">
+          <span><i class="fa-solid fa-list-check"></i> Rincian ${itemsCount} Barang</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+
+        <div class="trx-items-breakdown" id="trx-items-${trx.id}">
+          ${itemsRowsHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+};
+
+const clearTransactionHistory = async () => {
+  if (APP_STATE.historyTransactions.length === 0) {
+    showToast('Riwayat transaksi sudah kosong.', 'warning');
+    return;
+  }
+
+  if (confirm('Apakah Anda yakin ingin menghapus seluruh riwayat transaksi belanja? Tindakan ini tidak dapat dibatalkan.')) {
+    APP_STATE.historyTransactions = [];
+    saveHistoryLocally();
+    renderHistoryList();
+    await syncSessionToFirestore({ historyTransactions: [] });
+    playSound('delete');
+    showToast('Riwayat transaksi berhasil dibersihkan!', 'success');
+  }
+};
+
+// ========================================================
+// 18. SERVICE WORKER REGISTRATION (PWA)
 // ========================================================
 const registerServiceWorker = () => {
   if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
@@ -3220,7 +3672,7 @@ const registerServiceWorker = () => {
 };
 
 // ========================================================
-// 18. APPLICATION BOOTSTRAP (Langsung Aktif Seketika)
+// 19. APPLICATION BOOTSTRAP (Langsung Aktif Seketika)
 // ========================================================
 const startApp = () => {
   // 1. Inisialisasi referensi elemen DOM
@@ -3237,6 +3689,11 @@ const startApp = () => {
   // 2c. Inisialisasi gamifikasi: Muat koleksi voucher TikTok & aktifkan countdown timer
   loadVouchersFromStorage();
   startCountdownTimer();
+
+  // 2d. Inisialisasi Riwayat Transaksi Checkout & Tab Sistem
+  loadHistoryFromStorage();
+  renderHistoryList();
+  switchTab('belanja');
 
   // 3. Muat lokasi kustom & perbarui dropdown serta quick chips
   loadCustomLocations();

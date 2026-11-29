@@ -85,7 +85,7 @@ body::before {
 .app-container {
   max-width: 480px;
   margin: 0 auto;
-  padding: 14px 16px;
+  padding: 14px 16px 110px 16px;
   position: relative;
   z-index: 1;
 }
@@ -1307,7 +1307,7 @@ body::before {
    ======================================================== */
 .fab-add {
   position: fixed;
-  bottom: calc(20px + env(safe-area-inset-bottom, 10px));
+  bottom: calc(152px + env(safe-area-inset-bottom, 10px));
   right: calc(50% - 220px);
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #ffffff;
@@ -2202,7 +2202,7 @@ select:focus {
   }
 
   .app-container {
-    padding: 8px 12px;
+    padding: 8px 12px 110px 12px;
     width: 100%;
     max-width: 100%;
     overflow-x: hidden;
@@ -2301,7 +2301,7 @@ select:focus {
 
   .fab-add {
     right: 16px;
-    bottom: calc(16px + env(safe-area-inset-bottom, 12px));
+    bottom: calc(150px + env(safe-area-inset-bottom, 12px));
   }
 }
 
@@ -4077,4 +4077,745 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
 [data-theme="light"] .collection-code {
   color: #0d9488;
+}
+
+/* ========================================================
+   SPA MULTI-PAGE TAB SYSTEM & FLOATING BOTTOM NAV
+   ======================================================== */
+.app-tab-pane {
+  display: none;
+}
+
+.app-tab-pane.active {
+  display: block;
+  animation: tabFadeIn 0.22s ease-in-out;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Floating Bottom Navigation Bar */
+.floating-bottom-nav {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 430px;
+  height: 64px;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 36px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 20px rgba(16, 185, 129, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 6px 12px;
+  z-index: 1000;
+}
+
+.nav-tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  padding: 6px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  position: relative;
+  min-width: 76px;
+}
+
+.nav-tab-btn:hover {
+  color: var(--text-main);
+}
+
+.nav-tab-btn.active {
+  color: var(--primary);
+  background: rgba(16, 185, 129, 0.14);
+}
+
+.nav-icon-wrap {
+  position: relative;
+  font-size: 1.15rem;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+
+.nav-tab-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.nav-tab-badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 1.5px solid var(--bg-card);
+}
+
+.nav-tab-badge.hidden {
+  display: none !important;
+}
+
+/* ========================================================
+   STICKY FLOATING CHECKOUT ACTION BAR (TAB BELANJA)
+   ======================================================== */
+.checkout-action-bar {
+  position: fixed;
+  bottom: 86px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 430px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(16, 185, 129, 0.18);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 990;
+  transition: all var(--transition-fast);
+  animation: slideUpCheckout 0.25s ease-out;
+}
+
+.checkout-action-bar.hidden {
+  display: none !important;
+}
+
+@keyframes slideUpCheckout {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 15px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.checkout-bar-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.checkout-bar-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.checkout-bar-total {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.checkout-bar-status {
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.btn-checkout-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+  white-space: nowrap;
+}
+
+.btn-checkout-primary:hover,
+.btn-checkout-primary:active {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.55);
+}
+
+/* ========================================================
+   TAB RIWAYAT (TRANSAKSI CHECKOUT SELESAI)
+   ======================================================== */
+.history-page-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 4px;
+}
+
+.history-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.history-icon-badge {
+  width: 36px;
+  height: 36px;
+  background: rgba(14, 165, 233, 0.12);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+.history-title-wrap h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.history-title-wrap p {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.history-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge-count-history {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.btn-clear-history-icon {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.btn-clear-history-icon:hover {
+  background: var(--rose);
+  color: #ffffff;
+}
+
+.checkout-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* History Card */
+.history-trx-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.history-trx-card:hover {
+  border-color: rgba(16, 185, 129, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.trx-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.trx-store-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.trx-status-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--primary);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.trx-date-time {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.trx-card-financials {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 8px;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.trx-fin-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.trx-fin-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.trx-fin-val {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.trx-fin-saved {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-top: 2px;
+}
+
+.trx-items-toggle {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  width: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all var(--transition-fast);
+}
+
+.trx-items-toggle:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+}
+
+.trx-items-breakdown {
+  display: none;
+  margin-top: 10px;
+  border-top: 1px dashed var(--border-color);
+  padding-top: 8px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trx-items-breakdown.open {
+  display: flex;
+}
+
+.trx-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  padding: 3px 0;
+}
+
+.trx-item-name {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.trx-item-subtotal {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* ========================================================
+   TAB ANGGARAN EXTRAS (Preset Cepat & Statistik)
+   ======================================================== */
+.budget-settings-card,
+.budget-stats-summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.settings-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.settings-card-header h4 {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.budget-settings-desc {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+.preset-buttons-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.btn-preset-cap {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.btn-preset-cap small {
+  color: var(--primary);
+  font-size: 0.65rem;
+  font-weight: 600;
+  display: block;
+}
+
+.btn-preset-cap:hover,
+.btn-preset-cap:active {
+  border-color: var(--primary);
+  background: rgba(16, 185, 129, 0.12);
+  transform: translateY(-1px);
+}
+
+.custom-cap-input-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 8px;
+}
+
+.btn-save-cap {
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  justify-content: center;
+}
+
+.budget-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.summary-stat-box {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-box-label {
+  font-size: 0.66rem;
+  color: var(--text-dim);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.stat-box-val {
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+/* ========================================================
+   MODAL STRUK CHECKOUT BELANJA
+   ======================================================== */
+.receipt-modal-sheet {
+  max-width: 420px !important;
+  padding: 24px 20px 20px 20px;
+}
+
+.receipt-header {
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.receipt-store-logo {
+  width: 48px;
+  height: 48px;
+  background: rgba(16, 185, 129, 0.12);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--primary);
+  margin: 0 auto 10px;
+}
+
+.receipt-header h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.receipt-store-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-bottom: 2px;
+}
+
+.receipt-date-time {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.receipt-divider-dash {
+  border-top: 1.5px dashed var(--border-color);
+  margin: 14px 0;
+}
+
+.receipt-items-container {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.receipt-item-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+
+.receipt-item-details {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
+}
+
+.receipt-item-title {
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.receipt-item-meta {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.receipt-item-price {
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.receipt-totals-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+
+.receipt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.receipt-row-grand {
+  font-size: 1rem;
+  font-weight: 900;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.receipt-row-grand strong {
+  font-size: 1.15rem;
+}
+
+.badge-safe {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+}
+
+.badge-warn {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+}
+
+.badge-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+}
+
+.receipt-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.btn-confirm-checkout {
+  padding: 12px !important;
+  font-size: 0.9rem !important;
+  justify-content: center;
+}
+
+/* ========================================================
+   LIGHT THEME OVERRIDES FOR SPA NAV & CHECKOUT
+   ======================================================== */
+[data-theme="light"] .floating-bottom-nav {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 0 20px rgba(5, 150, 105, 0.12);
+}
+
+[data-theme="light"] .nav-tab-btn.active {
+  color: #059669;
+  background: rgba(5, 150, 105, 0.12);
+}
+
+[data-theme="light"] .checkout-action-bar {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(5, 150, 105, 0.3);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .checkout-bar-total {
+  color: #0f172a;
+}
+
+[data-theme="light"] .history-page-header,
+[data-theme="light"] .history-trx-card,
+[data-theme="light"] .budget-settings-card,
+[data-theme="light"] .budget-stats-summary-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .history-title-wrap h3,
+[data-theme="light"] .trx-store-info,
+[data-theme="light"] .trx-fin-val,
+[data-theme="light"] .receipt-header h3,
+[data-theme="light"] .receipt-item-price {
+  color: #0f172a;
+}
+
+[data-theme="light"] .trx-card-financials,
+[data-theme="light"] .receipt-totals-table,
+[data-theme="light"] .btn-preset-cap,
+[data-theme="light"] .summary-stat-box {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .receipt-modal-sheet {
+  background: #ffffff !important;
 }

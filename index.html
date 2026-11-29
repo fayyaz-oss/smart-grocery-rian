@@ -259,200 +259,333 @@
       </div>
     </header>
 
-    <!-- Header Sesi Belanja (Metadata Lokasi Supermarket & Tanggal Transaksi) -->
-    <section class="shopping-session-card" id="sessionCard">
-      <div class="session-card-header">
-        <div class="session-title">
-          <i class="fa-solid fa-store text-emerald"></i>
-          <span>Sesi Belanja Aktif</span>
-        </div>
-        <span class="session-badge" id="sessionStoreBadge">Lotte Mart - Puri Indah</span>
-      </div>
-
-      <div class="session-controls-grid">
-        <!-- Selector Lokasi Supermarket -->
-        <div class="session-field">
-          <label for="headerStoreLocation">
-            <i class="fa-solid fa-location-dot"></i> Lokasi Supermarket
-          </label>
-          <div class="custom-select-wrapper">
-            <select id="headerStoreLocation" class="session-select">
-              <option value="Lotte Mart Grocery - Puri Indah" selected>Lotte Mart Grocery - Puri Indah</option>
-              <option value="Superindo">Superindo</option>
-              <option value="Indomaret">Indomaret</option>
-              <option value="Alfamart">Alfamart</option>
-              <option value="Pasar Modern">Pasar Modern</option>
-              <option value="Hypermart">Hypermart</option>
-              <option value="Transmart">Transmart</option>
-              <option value="__custom__">+ Tambah Lokasi Kustom...</option>
-            </select>
-            <i class="fa-solid fa-chevron-down select-arrow"></i>
+    <!-- ========================================================
+         TAB 1: BELANJA (Sesi Belanja Aktif, Item & Checkout)
+         ======================================================== -->
+    <div id="tabPaneBelanja" class="app-tab-pane active">
+      <!-- Header Sesi Belanja (Metadata Lokasi Supermarket & Tanggal Transaksi) -->
+      <section class="shopping-session-card" id="sessionCard">
+        <div class="session-card-header">
+          <div class="session-title">
+            <i class="fa-solid fa-store text-emerald"></i>
+            <span>Sesi Belanja Aktif</span>
           </div>
-          <!-- Custom Location Input (shown when "+ Tambah Lokasi Kustom..." is selected) -->
-          <div id="customLocationInputWrapper" class="custom-location-input-wrapper" style="display:none;">
-            <input type="text" id="customLocationInput" placeholder="Contoh: AEON Mall BSD, Toko Pak Budi..."
-              autocomplete="off">
-            <button type="button" id="btnSaveCustomLocation" class="btn-save-custom-loc">
-              <i class="fa-solid fa-check"></i> Simpan Lokasi
-            </button>
-            <button type="button" id="btnCancelCustomLocation" class="btn-cancel-custom-loc" title="Batal">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>
+          <span class="session-badge" id="sessionStoreBadge">Lotte Mart - Puri Indah</span>
         </div>
 
-        <!-- Selector Tanggal Transaksi -->
-        <div class="session-field">
-          <label for="headerShoppingDate">
-            <i class="fa-solid fa-calendar-day"></i> Tanggal Transaksi
-          </label>
-          <div class="date-input-wrapper">
-            <input type="date" id="headerShoppingDate" class="session-date-input">
-            <button type="button" class="btn-cal-trigger" id="btnCalTrigger" title="Buka kalender">
-              <i class="fa-solid fa-calendar-days"></i>
+        <div class="session-controls-grid">
+          <!-- Selector Lokasi Supermarket -->
+          <div class="session-field">
+            <label for="headerStoreLocation">
+              <i class="fa-solid fa-location-dot"></i> Lokasi Supermarket
+            </label>
+            <div class="custom-select-wrapper">
+              <select id="headerStoreLocation" class="session-select">
+                <option value="Lotte Mart Grocery - Puri Indah" selected>Lotte Mart Grocery - Puri Indah</option>
+                <option value="Superindo">Superindo</option>
+                <option value="Indomaret">Indomaret</option>
+                <option value="Alfamart">Alfamart</option>
+                <option value="Pasar Modern">Pasar Modern</option>
+                <option value="Hypermart">Hypermart</option>
+                <option value="Transmart">Transmart</option>
+                <option value="__custom__">+ Tambah Lokasi Kustom...</option>
+              </select>
+              <i class="fa-solid fa-chevron-down select-arrow"></i>
+            </div>
+            <!-- Custom Location Input (shown when "+ Tambah Lokasi Kustom..." is selected) -->
+            <div id="customLocationInputWrapper" class="custom-location-input-wrapper" style="display:none;">
+              <input type="text" id="customLocationInput" placeholder="Contoh: AEON Mall BSD, Toko Pak Budi..."
+                autocomplete="off">
+              <button type="button" id="btnSaveCustomLocation" class="btn-save-custom-loc">
+                <i class="fa-solid fa-check"></i> Simpan Lokasi
+              </button>
+              <button type="button" id="btnCancelCustomLocation" class="btn-cancel-custom-loc" title="Batal">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Selector Tanggal Transaksi -->
+          <div class="session-field">
+            <label for="headerShoppingDate">
+              <i class="fa-solid fa-calendar-day"></i> Tanggal Transaksi
+            </label>
+            <div class="date-input-wrapper">
+              <input type="date" id="headerShoppingDate" class="session-date-input">
+              <button type="button" class="btn-cal-trigger" id="btnCalTrigger" title="Buka kalender">
+                <i class="fa-solid fa-calendar-days"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick Stats Bar (Savings & Items count) -->
+      <section class="quick-stats-row">
+        <div class="stat-pill">
+          <i class="fa-solid fa-tags text-emerald"></i>
+          <div class="stat-pill-info">
+            <span class="pill-title">Total Hemat Diskon</span>
+            <span class="pill-number text-emerald" id="totalSavedDisplay">Rp 0</span>
+          </div>
+        </div>
+        <div class="stat-pill">
+          <i class="fa-solid fa-cart-flatbed text-sky"></i>
+          <div class="stat-pill-info">
+            <span class="pill-title">Barang Belanja</span>
+            <span class="pill-number" id="itemCountDisplay">0 Item</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Search & Filter Controls -->
+      <section class="controls-section">
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="searchInput" placeholder="Cari barang belanja atau toko..." autocomplete="off">
+          <button id="btnClearSearch" class="btn-clear-search hidden" title="Hapus pencarian">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+          <button class="filter-tab active" data-filter="all">Semua (<span id="countAll">0</span>)</button>
+          <button class="filter-tab" data-filter="unbought">Belum Dibeli (<span id="countUnbought">0</span>)</button>
+          <button class="filter-tab" data-filter="bought">Sudah Dibeli (<span id="countBought">0</span>)</button>
+        </div>
+      </section>
+
+      <!-- F-01 & F-02: Grocery Items List Section -->
+      <main class="grocery-list-container">
+        <div class="list-header">
+          <h2 class="list-title">
+            <span>Daftar Belanjaan</span>
+            <span class="item-counter-badge" id="listBadgeCount">0</span>
+          </h2>
+
+          <div class="list-actions-right">
+            <!-- Sort Dropdown -->
+            <div class="custom-select-wrapper">
+              <select id="sortSelect" class="sort-select" title="Urutkan daftar">
+                <option value="newest">Terbaru</option>
+                <option value="name">Nama (A-Z)</option>
+                <option value="price-desc">Subtotal Tertinggi</option>
+                <option value="price-asc">Subtotal Terendah</option>
+              </select>
+              <i class="fa-solid fa-chevron-down select-arrow"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- The Realtime Items List -->
+        <div id="groceryList" class="items-list">
+          <!-- Rendered via JavaScript onSnapshot -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state">
+          <div class="empty-icon">
+            <i class="fa-solid fa-basket-shopping"></i>
+          </div>
+          <h3>Keranjang Belanja Kosong</h3>
+          <p>Belum ada barang di daftar belanja Anda. Tambahkan barang pertama Anda untuk mulai memantau anggaran!</p>
+          <div class="empty-buttons">
+            <button id="btnEmptyAdd" class="btn-primary">
+              <i class="fa-solid fa-plus"></i> Tambah Barang Baru
+            </button>
+            <button id="btnLoadDemoData" class="btn-secondary">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Muat Contoh Belanjaan
             </button>
           </div>
         </div>
-      </div>
-    </section>
+      </main>
 
-    <!-- F-05: Safety Cap / Limit Dompet Card -->
-    <section class="safety-cap-card" id="safetyCapSection">
-      <div class="card-header">
-        <div class="cap-title-wrapper">
-          <i class="fa-solid fa-shield-halved"></i>
-          <span>Safety Cap Anggaran</span>
+      <!-- Floating Action Button (FAB) for adding new item -->
+      <button id="btnOpenAddModal" class="fab-add" aria-label="Tambah Belanjaan">
+        <i class="fa-solid fa-plus"></i>
+        <span class="fab-text">Tambah Belanja</span>
+      </button>
+
+      <!-- Sticky Floating Checkout Action Bar (Tepat di atas Bottom Navigation Bar) -->
+      <div id="checkoutActionBar" class="checkout-action-bar hidden">
+        <div class="checkout-bar-info">
+          <span class="checkout-bar-label">Total Belanja Aktif</span>
+          <strong id="checkoutBarTotal" class="checkout-bar-total">Rp 0</strong>
+          <span id="checkoutBarStatus" class="checkout-bar-status text-emerald">Anggaran Aman</span>
         </div>
-        <button id="btnQuickEditBudget" class="badge-edit-budget" title="Ubah Batas Anggaran">
-          <span id="budgetCapLabel">Rp 400.000</span>
-          <i class="fa-solid fa-pen-to-square"></i>
+        <button type="button" id="btnCheckoutAll" class="btn-checkout-primary" title="Checkout Semua Barang Belanjaan">
+          <i class="fa-solid fa-cash-register"></i> Checkout Semua
         </button>
       </div>
+    </div>
 
-      <!-- Financial Metrics Grid -->
-      <div class="budget-metrics-grid">
-        <div class="metric-item">
-          <span class="metric-label">Total Belanja</span>
-          <span class="metric-val" id="totalExpenseDisplay">Rp 0</span>
-        </div>
-        <div class="metric-item">
-          <span class="metric-label" id="remainingBalanceLabel">Sisa Saldo</span>
-          <span class="metric-val balance-safe" id="remainingBalanceDisplay">Rp 400.000</span>
-        </div>
-        <div class="metric-item">
-          <span class="metric-label">Terpakai</span>
-          <span class="metric-val" id="percentageDisplay">0%</span>
-        </div>
-      </div>
-
-      <!-- Dynamic Progress Bar -->
-      <div class="progress-container">
-        <div class="progress-bar-track">
-          <div class="progress-bar-fill safe" id="budgetProgressBar" style="width: 0%"></div>
-        </div>
-        <div class="progress-markers">
-          <span>0%</span>
-          <span class="marker-warn">90% (Waspada)</span>
-          <span class="marker-limit">100% (Limit)</span>
-        </div>
-      </div>
-
-      <!-- Realtime Warning / Safety Alert Notice -->
-      <div class="safety-status-alert safe" id="safetyAlertBox">
-        <i class="fa-solid fa-circle-check status-icon" id="safetyAlertIcon"></i>
-        <div class="status-text">
-          <strong id="safetyAlertTitle">Anggaran Sangat Aman</strong>
-          <p id="safetyAlertDesc">Pengeluaran Anda masih jauh di bawah batas anggaran Rp 400.000.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Quick Stats Bar (Savings & Items count) -->
-    <section class="quick-stats-row">
-      <div class="stat-pill">
-        <i class="fa-solid fa-tags text-emerald"></i>
-        <div class="stat-pill-info">
-          <span class="pill-title">Total Hemat Diskon</span>
-          <span class="pill-number text-emerald" id="totalSavedDisplay">Rp 0</span>
-        </div>
-      </div>
-      <div class="stat-pill">
-        <i class="fa-solid fa-cart-flatbed text-sky"></i>
-        <div class="stat-pill-info">
-          <span class="pill-title">Barang Belanja</span>
-          <span class="pill-number" id="itemCountDisplay">0 Item</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Search & Filter Controls -->
-    <section class="controls-section">
-      <div class="search-box">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="searchInput" placeholder="Cari barang belanja atau toko..." autocomplete="off">
-        <button id="btnClearSearch" class="btn-clear-search hidden" title="Hapus pencarian">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-
-      <!-- Filter Tabs -->
-      <div class="filter-tabs">
-        <button class="filter-tab active" data-filter="all">Semua (<span id="countAll">0</span>)</button>
-        <button class="filter-tab" data-filter="unbought">Belum Dibeli (<span id="countUnbought">0</span>)</button>
-        <button class="filter-tab" data-filter="bought">Sudah Dibeli (<span id="countBought">0</span>)</button>
-      </div>
-    </section>
-
-    <!-- F-01 & F-02: Grocery Items List Section -->
-    <main class="grocery-list-container">
-      <div class="list-header">
-        <h2 class="list-title">
-          <span>Daftar Belanjaan</span>
-          <span class="item-counter-badge" id="listBadgeCount">0</span>
-        </h2>
-
-        <div class="list-actions-right">
-          <!-- Sort Dropdown -->
-          <div class="custom-select-wrapper">
-            <select id="sortSelect" class="sort-select" title="Urutkan daftar">
-              <option value="newest">Terbaru</option>
-              <option value="name">Nama (A-Z)</option>
-              <option value="price-desc">Subtotal Tertinggi</option>
-              <option value="price-asc">Subtotal Terendah</option>
-            </select>
-            <i class="fa-solid fa-chevron-down select-arrow"></i>
+    <!-- ========================================================
+         TAB 2: RIWAYAT (Arsip Transaksi Belanja yang Sudah Checkout)
+         ======================================================== -->
+    <div id="tabPaneRiwayat" class="app-tab-pane">
+      <section class="history-page-card">
+        <div class="history-page-header">
+          <div class="history-title-wrap">
+            <div class="history-icon-badge">
+              <i class="fa-solid fa-receipt text-sky"></i>
+            </div>
+            <div>
+              <h3>Riwayat Transaksi Belanja</h3>
+              <p>Arsip sesi belanja yang telah selesai di-checkout</p>
+            </div>
+          </div>
+          <div class="history-header-actions">
+            <span id="historyTrxCountBadge" class="badge-count-history">0 Transaksi</span>
+            <button type="button" id="btnClearTrxHistory" class="btn-clear-history-icon" title="Hapus Riwayat Transaksi">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
           </div>
         </div>
-      </div>
 
-      <!-- The Realtime Items List -->
-      <div id="groceryList" class="items-list">
-        <!-- Rendered via JavaScript onSnapshot -->
-      </div>
+        <div id="checkoutHistoryList" class="checkout-history-list">
+          <!-- Rendered dynamically via JavaScript -->
+        </div>
 
-      <!-- Empty State -->
-      <div id="emptyState" class="empty-state">
-        <div class="empty-icon">
+        <div id="emptyHistoryState" class="empty-state show">
+          <div class="empty-icon">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <h3>Belum Ada Riwayat Belanja</h3>
+          <p>Selesaikan belanjaan Anda di tab "Belanja" dan klik tombol "Checkout Semua Barang" untuk mencatat arsip transaksi ke sini!</p>
+          <button type="button" id="btnStartShoppingFromHistory" class="btn-primary">
+            <i class="fa-solid fa-basket-shopping"></i> Ke Halaman Belanja
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ========================================================
+         TAB 3: ANGGARAN (Safety Cap & Limit Dompet Rian)
+         ======================================================== -->
+    <div id="tabPaneAnggaran" class="app-tab-pane">
+      <!-- F-05: Safety Cap / Limit Dompet Card -->
+      <section class="safety-cap-card" id="safetyCapSection">
+        <div class="card-header">
+          <div class="cap-title-wrapper">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Safety Cap Anggaran</span>
+          </div>
+          <button id="btnQuickEditBudget" class="badge-edit-budget" title="Ubah Batas Anggaran">
+            <span id="budgetCapLabel">Rp 400.000</span>
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+        </div>
+
+        <!-- Financial Metrics Grid -->
+        <div class="budget-metrics-grid">
+          <div class="metric-item">
+            <span class="metric-label">Total Belanja</span>
+            <span class="metric-val" id="totalExpenseDisplay">Rp 0</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label" id="remainingBalanceLabel">Sisa Saldo</span>
+            <span class="metric-val balance-safe" id="remainingBalanceDisplay">Rp 400.000</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Terpakai</span>
+            <span class="metric-val" id="percentageDisplay">0%</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Progress Bar -->
+        <div class="progress-container">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill safe" id="budgetProgressBar" style="width: 0%"></div>
+          </div>
+          <div class="progress-markers">
+            <span>0%</span>
+            <span class="marker-warn">90% (Waspada)</span>
+            <span class="marker-limit">100% (Limit)</span>
+          </div>
+        </div>
+
+        <!-- Realtime Warning / Safety Alert Notice -->
+        <div class="safety-status-alert safe" id="safetyAlertBox">
+          <i class="fa-solid fa-circle-check status-icon" id="safetyAlertIcon"></i>
+          <div class="status-text">
+            <strong id="safetyAlertTitle">Anggaran Sangat Aman</strong>
+            <p id="safetyAlertDesc">Pengeluaran Anda masih jauh di bawah batas anggaran Rp 400.000.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Preset Cepat Anggaran & Pengaturan Limit -->
+      <section class="budget-settings-card">
+        <div class="settings-card-header">
+          <i class="fa-solid fa-wallet text-emerald"></i>
+          <h4>Ubah Cepat Batas Dompet (Safety Cap)</h4>
+        </div>
+        <p class="budget-settings-desc">Pilih preset saldo dompet cepat untuk menguji skenario batas belanja:</p>
+        <div class="preset-buttons-grid">
+          <button type="button" class="btn-preset-cap" data-amount="100000">Rp 100.000 <small>(Uji DT2)</small></button>
+          <button type="button" class="btn-preset-cap" data-amount="250000">Rp 250.000</button>
+          <button type="button" class="btn-preset-cap" data-amount="350000">Rp 350.000 <small>(Kasus Rian)</small></button>
+          <button type="button" class="btn-preset-cap" data-amount="500000">Rp 500.000</button>
+        </div>
+
+        <div class="custom-cap-input-row">
+          <div class="input-with-currency">
+            <span class="currency-prefix">Rp</span>
+            <input type="number" id="inputCustomBudgetCap" placeholder="Atau ketik limit custom..." min="1000" step="5000">
+          </div>
+          <button type="button" id="btnSaveCustomBudgetCap" class="btn-primary btn-save-cap">
+            <i class="fa-solid fa-check"></i> Simpan
+          </button>
+        </div>
+      </section>
+
+      <!-- Rangkuman Statistik Keuangan -->
+      <section class="budget-stats-summary-card">
+        <div class="settings-card-header">
+          <i class="fa-solid fa-chart-pie text-sky"></i>
+          <h4>Statistik Keuangan Belanja</h4>
+        </div>
+        <div class="budget-summary-grid">
+          <div class="summary-stat-box">
+            <span class="stat-box-label">Total Penghematan Diskon</span>
+            <strong class="stat-box-val text-emerald" id="summaryTotalSaved">Rp 0</strong>
+          </div>
+          <div class="summary-stat-box">
+            <span class="stat-box-label">Rata-rata Harga Satuan</span>
+            <strong class="stat-box-val text-sky" id="summaryAvgPrice">Rp 0</strong>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ========================================================
+         FLOATING BOTTOM NAVIGATION BAR (Multi-Page SPA)
+         ======================================================== -->
+    <nav class="floating-bottom-nav" id="bottomNav" aria-label="Navigasi Menu Utama">
+      <button type="button" class="nav-tab-btn active" data-tab="belanja" id="navTabBelanja">
+        <div class="nav-icon-wrap">
           <i class="fa-solid fa-basket-shopping"></i>
+          <span class="nav-tab-badge" id="navBadgeBelanja">0</span>
         </div>
-        <h3>Keranjang Belanja Kosong</h3>
-        <p>Belum ada barang di daftar belanja Anda. Tambahkan barang pertama Anda untuk mulai memantau anggaran!</p>
-        <div class="empty-buttons">
-          <button id="btnEmptyAdd" class="btn-primary">
-            <i class="fa-solid fa-plus"></i> Tambah Barang Baru
-          </button>
-          <button id="btnLoadDemoData" class="btn-secondary">
-            <i class="fa-solid fa-wand-magic-sparkles"></i> Muat Contoh Belanjaan
-          </button>
-        </div>
-      </div>
-    </main>
+        <span class="nav-tab-label">Belanja</span>
+      </button>
 
-    <!-- Floating Action Button (FAB) for adding new item -->
-    <button id="btnOpenAddModal" class="fab-add" aria-label="Tambah Belanjaan">
-      <i class="fa-solid fa-plus"></i>
-      <span class="fab-text">Tambah Belanja</span>
-    </button>
+      <button type="button" class="nav-tab-btn" data-tab="riwayat" id="navTabRiwayat">
+        <div class="nav-icon-wrap">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <span class="nav-tab-badge hidden" id="navBadgeRiwayat">0</span>
+        </div>
+        <span class="nav-tab-label">Riwayat</span>
+      </button>
+
+      <button type="button" class="nav-tab-btn" data-tab="anggaran" id="navTabAnggaran">
+        <div class="nav-icon-wrap">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <span class="nav-tab-label">Anggaran</span>
+      </button>
+    </nav>
   </div>
 
   <!-- ========================================================
@@ -973,6 +1106,62 @@
 
   <!-- Confetti Container for Gamification Celebrations -->
   <div id="confettiContainer" class="confetti-container" aria-hidden="true"></div>
+
+  <!-- Modal Konfirmasi Struk Checkout Belanja -->
+  <div id="checkoutReceiptModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-sheet receipt-modal-sheet" role="dialog" aria-labelledby="receiptModalTitle">
+      <div class="receipt-header">
+        <div class="receipt-store-logo">
+          <i class="fa-solid fa-receipt"></i>
+        </div>
+        <h3 id="receiptModalTitle">Struk Belanja & Checkout 🧾</h3>
+        <p class="receipt-store-name" id="receiptStoreName">Lotte Mart Grocery - Puri Indah</p>
+        <span class="receipt-date-time" id="receiptDateTime">26 Oktober 2026</span>
+      </div>
+
+      <div class="receipt-divider-dash"></div>
+
+      <!-- Itemized Items List in Receipt -->
+      <div class="receipt-items-container" id="receiptItemsContainer">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="receipt-divider-dash"></div>
+
+      <!-- Financial Totals Table -->
+      <div class="receipt-totals-table">
+        <div class="receipt-row">
+          <span>Jumlah Barang:</span>
+          <strong id="receiptTotalItems">0 Barang</strong>
+        </div>
+        <div class="receipt-row text-emerald">
+          <span>Total Diskon Dihemat:</span>
+          <strong id="receiptTotalSaved">Rp 0</strong>
+        </div>
+        <div class="receipt-row receipt-row-grand">
+          <span>TOTAL BELANJA:</span>
+          <strong id="receiptGrandTotal" class="text-emerald">Rp 0</strong>
+        </div>
+        <div class="receipt-row">
+          <span>Batas Saldo Dompet:</span>
+          <span id="receiptWalletLimit">Rp 400.000</span>
+        </div>
+        <div class="receipt-row">
+          <span>Status Anggaran:</span>
+          <span id="receiptSafetyBadge" class="badge-safe">Sangat Aman</span>
+        </div>
+      </div>
+
+      <div class="receipt-actions">
+        <button type="button" class="btn-secondary" id="btnCancelCheckout">
+          <i class="fa-solid fa-arrow-left"></i> Batal / Belanja Lagi
+        </button>
+        <button type="button" class="btn-primary btn-confirm-checkout" id="btnConfirmCheckout">
+          <i class="fa-solid fa-check-double"></i> Selesaikan Belanja
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Reward Voucher TikTok (Gamifikasi Saat Barang Dicentang) -->
   <div id="tiktokRewardModal" class="modal-overlay" aria-hidden="true">
