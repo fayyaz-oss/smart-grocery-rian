@@ -447,9 +447,122 @@ const initSound = () => {
 };
 
 // ========================================================
-// KEVIN MACLEOD BACKGROUND MUSIC (BGM) CONTROLLER
-// Musik: "Monkeys Spinning Monkeys" karya Kevin MacLeod
 // ========================================================
+// LAKEY INSPIRED - CHILL DAY BACKGROUND MUSIC (BGM) CONTROLLER
+// Musik: "Chill Day" karya LAKEY INSPIRED (Lo-Fi Relaxing Chords)
+// Mendukung pemutaran file ./assets/audio/chill-day.mp3
+// Dilengkapi Web Audio API Fallback Synthesizer otomatis jika MP3 lokal belum siap.
+// ========================================================
+
+let lofiSynthContext = null;
+let lofiSynthMasterGain = null;
+let lofiSynthTimer = null;
+let lofiFilterNode = null;
+let isLofiSynthRunning = false;
+
+// Progresi harmoni lo-fi "Chill Day" (C Major / A Minor: Fmaj7 -> Em7 -> Dm7 -> Cmaj7)
+const CHILL_DAY_CHORDS = [
+  { name: 'Fmaj7', bass: 87.31, notes: [174.61, 220.00, 261.63, 329.63] },
+  { name: 'Em7',   bass: 82.41, notes: [164.81, 196.00, 246.94, 293.66] },
+  { name: 'Dm7',   bass: 73.42, notes: [146.83, 174.61, 220.00, 261.63] },
+  { name: 'Cmaj7', bass: 65.41, notes: [130.81, 164.81, 196.00, 246.94] }
+];
+
+let currentChordIdx = 0;
+
+const startLofiSynthFallback = () => {
+  if (isLofiSynthRunning) return;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!lofiSynthContext || lofiSynthContext.state === 'closed') {
+      lofiSynthContext = new AudioCtx();
+    }
+    if (lofiSynthContext.state === 'suspended') {
+      lofiSynthContext.resume();
+    }
+
+    // Master volume lo-fi santai: 0.25
+    lofiSynthMasterGain = lofiSynthContext.createGain();
+    lofiSynthMasterGain.gain.setValueAtTime(0.25, lofiSynthContext.currentTime);
+
+    // Warm Low-Pass Filter (karakter hangat vintage lo-fi ~720Hz)
+    lofiFilterNode = lofiSynthContext.createBiquadFilter();
+    lofiFilterNode.type = 'lowpass';
+    lofiFilterNode.frequency.setValueAtTime(720, lofiSynthContext.currentTime);
+    lofiFilterNode.Q.setValueAtTime(1.1, lofiSynthContext.currentTime);
+
+    lofiFilterNode.connect(lofiSynthMasterGain);
+    lofiSynthMasterGain.connect(lofiSynthContext.destination);
+
+    isLofiSynthRunning = true;
+    currentChordIdx = 0;
+
+    const playNextChord = () => {
+      if (!isLofiSynthRunning || !lofiSynthContext) return;
+      const ctx = lofiSynthContext;
+      const now = ctx.currentTime;
+      const chord = CHILL_DAY_CHORDS[currentChordIdx];
+      const chordDuration = 3.2; // ~75 BPM lo-fi tempo santai
+
+      // 1. Bassline lembut (Sine Sub-Bass)
+      const bassOsc = ctx.createOscillator();
+      const bassGain = ctx.createGain();
+      bassOsc.type = 'sine';
+      bassOsc.frequency.setValueAtTime(chord.bass, now);
+      bassGain.gain.setValueAtTime(0.001, now);
+      bassGain.gain.linearRampToValueAtTime(0.16, now + 0.15);
+      bassGain.gain.exponentialRampToValueAtTime(0.001, now + chordDuration - 0.1);
+      bassOsc.connect(bassGain);
+      bassGain.connect(lofiFilterNode);
+      bassOsc.start(now);
+      bassOsc.stop(now + chordDuration);
+
+      // 2. Chord Lo-Fi Electric Piano (Triangle & Sine dengan analog detune)
+      chord.notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const oscGain = ctx.createGain();
+        osc.type = (i % 2 === 0) ? 'triangle' : 'sine';
+        osc.detune.setValueAtTime((i - 1.5) * 4, now);
+        osc.frequency.setValueAtTime(freq, now);
+
+        const noteDelay = i * 0.035; // Strum petikan alami
+        const startTime = now + noteDelay;
+        oscGain.gain.setValueAtTime(0.001, startTime);
+        oscGain.gain.linearRampToValueAtTime(0.065, startTime + 0.12);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + (chordDuration - noteDelay - 0.15));
+
+        osc.connect(oscGain);
+        oscGain.connect(lofiFilterNode);
+        osc.start(startTime);
+        osc.stop(now + chordDuration);
+      });
+
+      currentChordIdx = (currentChordIdx + 1) % CHILL_DAY_CHORDS.length;
+    };
+
+    playNextChord();
+    lofiSynthTimer = setInterval(playNextChord, 3200);
+    console.log('[BGM] Web Audio API Fallback Synthesizer "Chill Day - LAKEY INSPIRED" aktif (Volume: 0.25).');
+  } catch (err) {
+    console.warn('[BGM] Tidak dapat menginisialisasi Web Audio lo-fi fallback:', err);
+  }
+};
+
+const stopLofiSynthFallback = () => {
+  isLofiSynthRunning = false;
+  if (lofiSynthTimer) {
+    clearInterval(lofiSynthTimer);
+    lofiSynthTimer = null;
+  }
+  if (lofiSynthMasterGain && lofiSynthContext) {
+    try {
+      lofiSynthMasterGain.gain.setValueAtTime(lofiSynthMasterGain.gain.value, lofiSynthContext.currentTime);
+      lofiSynthMasterGain.gain.linearRampToValueAtTime(0.001, lofiSynthContext.currentTime + 0.1);
+    } catch(e) {}
+  }
+};
+
 const updateBgmUI = (isPlaying) => {
   APP_STATE.bgmPlaying = isPlaying;
   const authBgmBtn = document.getElementById('btnAuthToggleBgm');
@@ -460,6 +573,7 @@ const updateBgmUI = (isPlaying) => {
 
   if (authBgmBtn) {
     authBgmBtn.classList.toggle('is-playing', isPlaying);
+    authBgmBtn.title = isPlaying ? 'Jeda Musik Latar (Chill Day - LAKEY INSPIRED)' : 'Putar Musik Latar (Chill Day - LAKEY INSPIRED)';
   }
   if (authBgmText) {
     authBgmText.textContent = isPlaying ? 'Jeda BGM' : 'Play BGM';
@@ -470,7 +584,7 @@ const updateBgmUI = (isPlaying) => {
 
   if (mainBgmBtn) {
     mainBgmBtn.classList.toggle('active', isPlaying);
-    mainBgmBtn.title = isPlaying ? 'Jeda Musik Latar Kevin MacLeod (Aktif)' : 'Putar Musik Latar Kevin MacLeod (Mute)';
+    mainBgmBtn.title = isPlaying ? 'Jeda Musik Latar (Chill Day - LAKEY INSPIRED)' : 'Putar Musik Latar (Chill Day - LAKEY INSPIRED)';
   }
   if (mainBgmIcon) {
     mainBgmIcon.className = isPlaying ? 'fa-solid fa-music' : 'fa-solid fa-volume-xmark';
@@ -479,37 +593,50 @@ const updateBgmUI = (isPlaying) => {
 
 const playBgm = async () => {
   const audio = document.getElementById('bgmAudio');
-  if (!audio) return;
+  updateBgmUI(true);
+  try { localStorage.setItem(STORAGE_KEYS.BGM_ENABLED, 'true'); } catch(e) {}
+
+  if (!audio) {
+    startLofiSynthFallback();
+    return;
+  }
+
+  audio.volume = 0.25; // Volume lo-fi santai 0.25
+  audio.loop = true;
+
   try {
-    audio.volume = 0.35; // Volume santai dan nyaman
-    await audio.play();
-    updateBgmUI(true);
-    try { localStorage.setItem(STORAGE_KEYS.BGM_ENABLED, 'true'); } catch(e) {}
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      await playPromise;
+      // Jika MP3 audio berhasil berputar, hentikan synth fallback
+      stopLofiSynthFallback();
+    }
   } catch (err) {
-    console.warn('[BGM] Browser menahan autoplay hingga ada interaksi pengguna:', err);
-    updateBgmUI(false);
+    console.info('[BGM] MP3 audio play gagal/belum siap, mengaktifkan Web Audio Lo-Fi Fallback "Chill Day":', err.message);
+    startLofiSynthFallback();
   }
 };
 
 const pauseBgm = () => {
   const audio = document.getElementById('bgmAudio');
-  if (!audio) return;
-  try {
-    audio.pause();
-    updateBgmUI(false);
-    try { localStorage.setItem(STORAGE_KEYS.BGM_ENABLED, 'false'); } catch(e) {}
-  } catch(e) {}
+  if (audio) {
+    try { audio.pause(); } catch(e) {}
+  }
+  stopLofiSynthFallback();
+  updateBgmUI(false);
+  try { localStorage.setItem(STORAGE_KEYS.BGM_ENABLED, 'false'); } catch(e) {}
 };
 
 const toggleBgm = () => {
   const audio = document.getElementById('bgmAudio');
-  if (!audio) return;
-  if (audio.paused) {
-    playBgm();
-    showToast('Musik latar: Monkeys Spinning Monkeys (Kevin MacLeod) diputar 🎵', 'success', 2200);
-  } else {
+  const isPlaying = APP_STATE.bgmPlaying || (audio && !audio.paused) || isLofiSynthRunning;
+
+  if (isPlaying) {
     pauseBgm();
     showToast('Musik latar dijeda ⏸️', 'warning', 1500);
+  } else {
+    playBgm();
+    showToast('Musik latar: Chill Day - LAKEY INSPIRED diputar 🎵', 'success', 2200);
   }
 };
 
@@ -2391,7 +2518,7 @@ const setupAuthEventListeners = () => {
     });
   }
 
-  // BGM Buttons (Kevin MacLeod)
+  // BGM Buttons (Chill Day - LAKEY INSPIRED)
   const btnAuthBgm = document.getElementById('btnAuthToggleBgm');
   const btnMainBgm = document.getElementById('btnToggleBgm');
   if (btnAuthBgm) btnAuthBgm.addEventListener('click', toggleBgm);
@@ -3394,6 +3521,13 @@ const switchTab = (tabName) => {
     updateBudgetSafetyDisplay();
   }
 
+  // Atur kelas has-checkout-bar untuk penyesuaian posisi FAB
+  if (tabName !== 'belanja') {
+    document.body.classList.remove('has-checkout-bar');
+  } else {
+    document.body.classList.toggle('has-checkout-bar', APP_STATE.items.length > 0);
+  }
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
@@ -3402,6 +3536,7 @@ const updateCheckoutActionBar = (totalExpense, totalSavings, remaining, percenta
 
   const hasItems = APP_STATE.items.length > 0;
   dom.checkoutActionBar.classList.toggle('hidden', !hasItems);
+  document.body.classList.toggle('has-checkout-bar', hasItems && APP_STATE.activeTab === 'belanja');
 
   if (dom.checkoutBarTotal) {
     dom.checkoutBarTotal.textContent = formatRupiah(totalExpense);
@@ -3678,7 +3813,7 @@ const startApp = () => {
   // 1. Inisialisasi referensi elemen DOM
   initDom();
 
-  // 2. Inisialisasi tema, audio sound effects & musik latar Kevin MacLeod
+  // 2. Inisialisasi tema, audio sound effects & musik latar Chill Day (LAKEY INSPIRED)
   initTheme();
   initSound();
   initBgm();

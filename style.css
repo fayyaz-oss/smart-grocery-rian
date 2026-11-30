@@ -850,14 +850,17 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-bottom: 100px;
+  padding-bottom: 200px;
 }
 
 .list-header {
+  position: relative;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 4px;
+  margin-bottom: 4px;
 }
 
 .list-title {
@@ -1307,8 +1310,8 @@ body::before {
    ======================================================== */
 .fab-add {
   position: fixed;
-  bottom: calc(152px + env(safe-area-inset-bottom, 10px));
-  right: calc(50% - 220px);
+  bottom: calc(90px + env(safe-area-inset-bottom, 8px));
+  right: max(16px, calc((100vw - 430px) / 2 + 16px));
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #ffffff;
   border: none;
@@ -1322,13 +1325,18 @@ body::before {
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45);
-  z-index: 40;
-  transition: all var(--transition-fast);
+  z-index: 985;
+  transition: bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+/* Ketika panel "TOTAL BELANJA AKTIF" muncul, FAB bergeser tepat di atas panel tersebut */
+body.has-checkout-bar .fab-add {
+  bottom: calc(156px + env(safe-area-inset-bottom, 10px));
 }
 
 @media (max-width: 480px) {
   .fab-add {
-    right: 20px;
+    right: 16px;
   }
 }
 
@@ -2301,7 +2309,10 @@ select:focus {
 
   .fab-add {
     right: 16px;
-    bottom: calc(150px + env(safe-area-inset-bottom, 12px));
+    bottom: calc(90px + env(safe-area-inset-bottom, 10px));
+  }
+  body.has-checkout-bar .fab-add {
+    bottom: calc(156px + env(safe-area-inset-bottom, 12px));
   }
 }
 
